@@ -264,5 +264,8 @@ TARGET_USES_WCNSS_MAC_ADDR_REV		:= true
 # OTA Assert
 TARGET_OTA_ASSERT_DEVICE := PD1619,PD1619MA
 
+#Enable DRM plugins 64 bit compilation
+TARGET_ENABLE_MEDIADRM_64 := true
+
 # inherit from the proprietary version
 -include vendor/vivo/PD1619/BoardConfigVendor.mk
