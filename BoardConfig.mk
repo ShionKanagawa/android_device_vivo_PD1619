@@ -147,6 +147,9 @@ NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
 SF_VSYNC_EVENT_PHASE_OFFSET_NS := 2000000
 VSYNC_EVENT_PHASE_OFFSET_NS := 6000000
 
+# UI
+TARGET_ADDITIONAL_GRALLOC_10_USAGE_BITS := 0x02000000U
+
 # Encryption
 # Stock PD1619 reports ro.crypto.state=unsupported and its fstab does not use
 # encryptable/forceencrypt flags. Keep HW disk encryption disabled for bring-up;
