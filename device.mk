@@ -198,6 +198,7 @@ PRODUCT_PACKAGES += \
     libloc_core \
     libloc_ds_api \
     libloc_stub \
+    libloc_pla \
     liblocation_api \
     libvehiclenetwork-native
 
