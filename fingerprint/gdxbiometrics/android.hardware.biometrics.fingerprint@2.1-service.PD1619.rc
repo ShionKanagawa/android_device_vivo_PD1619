@@ -11,7 +11,7 @@ on property:sys.fingerprint.boot=fpc_1245
 on property:sys.fingerprint.stop=fps_hal
     stop fps_hal
 
-service fps_hal /vendor/bin/hw/android.hardware.biometrics.fingerprint@2.0-service-custom
+service fps_hal /vendor/bin/hw/android.hardware.biometrics.fingerprint@2.1-service.PD1619
     # "class hal" causes a race condition on some devices due to files created
     # in /data. As a workaround, postpone startup until later in boot once
     # /data is mounted.
