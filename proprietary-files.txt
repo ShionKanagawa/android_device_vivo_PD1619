@@ -135,12 +135,10 @@ vendor/lib64/libbt-vendor.so
 
 # Radio / IMS / QMI
 -app/QtiTelephonyService/QtiTelephonyService.apk|a3d303a56997be3f41d8e7bde623c92e2f7089ca
--app/ims/ims.apk|695919d84639150a1434802fdfb5eec73aa45b10
--app/imssettings/imssettings.apk|d272ce07341f0a4e5d97c5b835e3b642f0a761d3
 -app/uceShimService/uceShimService.apk|91ba3613d1575b13e3441ccd26b1d2bd33517e27
 -framework/QtiTelephonyServicelibrary.jar|4d0f173fff4bd9a3a3b39ce2b07d6f726ff8e062
 -framework/qcrilhook.jar|5f83471466ba2738f160512c96491f84de6ff2cb
--framework/qti-telephony-common.jar|b77bea41e769d66f1fd19176a414d412601aacdd
+-framework/qti-telephony-common.jar|b1953a3599255f08f1785c677d22810f65e0167b
 -priv-app/qcrilmsgtunnel/qcrilmsgtunnel.apk|86341abaabda74bfc046668861ce14bdff1aedc4
 -vendor/framework/qti-vzw-ims-internal.jar|c017692eddd59d95d626e9636418fa5044d556e7
 etc/permissions/com.qualcomm.qti.imscmservice.xml|db25ef24f1937366d58a53b4f4b8923bc9e98d2d
@@ -174,6 +172,8 @@ lib64/libimsmedia_jni.so|6753784d61401f47207663d605df8bbf3277f9e1
 lib64/libqdMetaData.system.so
 lib64/librcc.so
 lib64/vendor.qti.imsrtpservice@1.0.so|b2e21195701c744c3bc00166eaef1aa8c09a5218
+-priv-app/ims/ims.apk|eef47c0b6f250e7f96e7155d84274b1c83940d8f
+-vendor/app/imssettings/imssettings.apk|34bb4f4e805c938d894cce6b4cee66516f64a130
 vendor/etc/data/dsi_config.xml
 vendor/etc/data/netmgr_config.xml
 vendor/etc/data/qmi_config.xml
