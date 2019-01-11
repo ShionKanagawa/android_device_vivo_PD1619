@@ -192,7 +192,7 @@ on boot
     mkdir /persist/vpp 0770 media media
 
 on post-fs
-    start qseecomd
+    start vendor.qseecomd
 
 # msm specific files that need to be created on /data
 on post-fs-data
