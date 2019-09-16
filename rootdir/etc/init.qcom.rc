@@ -600,3 +600,6 @@ service time_daemon /system/vendor/bin/time_daemon
     class main
     user root
     group root
+
+on property:apexd.status=ready
+    mount none /system/etc/swcodec/ld.config.txt /apex/com.android.media.swcodec/etc/ld.config.txt bind
