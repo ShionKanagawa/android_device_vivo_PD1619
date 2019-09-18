@@ -12,15 +12,15 @@ package org.lineageos.settings.device;
 import android.os.Bundle;
 import android.view.MenuItem;
 
-import com.android.settingslib.drawer.SettingsDrawerActivity;
+import android.preference.PreferenceActivity;
 
-public class VivoFeaturesActivity extends SettingsDrawerActivity {
+public class VivoFeaturesActivity extends PreferenceActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getFragmentManager()
                 .beginTransaction()
-                .replace(R.id.content_frame, new VivoFeaturesFragment())
+                .replace(android.R.id.content, new VivoFeaturesFragment())
                 .commit();
     }
 
