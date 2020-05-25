@@ -65,7 +65,7 @@ LOCAL_C_INCLUDES := \
 #HAL 1.0 Include paths
 LOCAL_C_INCLUDES += \
         frameworks/native/include/media/hardware \
-        device/vivo/PD1619/camera/QCamera2/HAL
+        $(LOCAL_PATH)/HAL
 
 ifeq ($(TARGET_COMPILE_WITH_MSM_KERNEL),true)
 LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
