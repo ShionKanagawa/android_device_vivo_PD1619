@@ -19,8 +19,8 @@
 set -e
 
 # Required!
-DEVICE=s2
-VENDOR=leeco
+DEVICE=PD1619
+VENDOR=vivo
 
 INITIAL_COPYRIGHT_YEAR=2018
 
@@ -45,8 +45,6 @@ write_headers
 
 # The blobs
 write_makefiles "$MY_DIR"/proprietary-files.txt
-echo "" >> "$PRODUCTMK"
-write_makefiles "$MY_DIR"/proprietary-files-qc.txt
 
 # We are done!
 write_footers

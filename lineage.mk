@@ -15,27 +15,26 @@
 #
 
 # Inherit device configuration
-$(call inherit-product, device/leeco/s2/full_s2.mk)
+$(call inherit-product, device/vivo/PD1619/full_PD1619.mk)
 
 # Inherit some common LineageOS stuff.
 $(call inherit-product, vendor/lineage/config/common_full_phone.mk)
 
 ## Device identifier. This must come after all inclusions
-PRODUCT_DEVICE := s2
-PRODUCT_NAME := lineage_s2
-PRODUCT_BRAND := LeEco
-PRODUCT_MANUFACTURER := LeMobile
+PRODUCT_DEVICE := PD1619
+PRODUCT_NAME := lineage_PD1619
+PRODUCT_BRAND := vivo
+PRODUCT_MANUFACTURER := vivo
+PRODUCT_MODEL := vivo X9Plus
 
-PRODUCT_GMS_CLIENTID_BASE := android-leeco
+PRODUCT_GMS_CLIENTID_BASE := android-vivo
 
 PRODUCT_BUILD_PROP_OVERRIDES += \
-    TARGET_DEVICE=le_s2 \
-    PRODUCT_NAME=Le2_CN \
-    PRIVATE_BUILD_DESC="s2-user 6.0.1 IIXOSOP5801910121S 44 release-keys"
+    TARGET_DEVICE=PD1619 \
+    PRODUCT_NAME=PD1619 \
+    PRIVATE_BUILD_DESC="msm8952_64-user 8.1.0 OPM1.171019.019 eng.compil.20181110.124208 release-keys"
 
-BUILD_FINGERPRINT := Letv/Le2_WW/le_s2_ww:6.0.1/IIXOSOP5801910121S/44:user/release-keys
-
-PRODUCT_SYSTEM_PROPERTY_BLACKLIST += ro.product.model
+BUILD_FINGERPRINT := vivo/PD1619/PD1619:8.1.0/OPM1.171019.019/compil11101242:user/release-keys
 
 # Release name
-PRODUCT_RELEASE_NAME := s2
+PRODUCT_RELEASE_NAME := PD1619

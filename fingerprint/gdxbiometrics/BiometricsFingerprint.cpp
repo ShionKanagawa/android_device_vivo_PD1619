@@ -34,8 +34,9 @@ namespace fingerprint {
 namespace V2_1 {
 namespace implementation {
 
-// Supported fingerprint HAL version
-static const uint16_t kVersion = HARDWARE_MODULE_API_VERSION(2, 0);
+// Supported fingerprint HAL versions
+static const uint16_t kVersion20 = HARDWARE_MODULE_API_VERSION(2, 0);
+static const uint16_t kVersion21 = HARDWARE_MODULE_API_VERSION(2, 1);
 static bool is_goodix = false;
 
 using RequestStatus =
@@ -46,11 +47,11 @@ BiometricsFingerprint *BiometricsFingerprint::sInstance = nullptr;
 BiometricsFingerprint::BiometricsFingerprint() : mClientCallback(nullptr), mDevice(nullptr) {
     sInstance = this; // keep track of the most recent instance
     char vend [PROPERTY_VALUE_MAX];
-    property_get("ro.boot.fpsensor", vend, NULL);
+    property_get("sys.fingerprint.boot", vend, "");
 
-    if (!strcmp(vend, "fpc")) {
+    if (!strncmp(vend, "fpc", 3)) {
         is_goodix = false;
-        mDevice = openHal();
+        mDevice = openHal(vend);
     } else {
         is_goodix = true;
         mDevice = getWrapperService(BiometricsFingerprint::notify);
@@ -252,12 +253,13 @@ IBiometricsFingerprint* BiometricsFingerprint::getInstance() {
     return sInstance;
 }
 
-fingerprint_device_t* BiometricsFingerprint::openHal() {
+fingerprint_device_t* BiometricsFingerprint::openHal(const char* moduleId) {
     int err;
     const hw_module_t *hw_mdl = nullptr;
-    ALOGD("Opening fingerprint hal library...");
-    if (0 != (err = hw_get_module(FINGERPRINT_HARDWARE_MODULE_ID, &hw_mdl))) {
-        ALOGE("Can't open fingerprint HW Module, error: %d", err);
+    const char* id = (moduleId && moduleId[0]) ? moduleId : FINGERPRINT_HARDWARE_MODULE_ID;
+    ALOGD("Opening fingerprint hal library: %s", id);
+    if (0 != (err = hw_get_module(id, &hw_mdl))) {
+        ALOGE("Can't open fingerprint HW Module %s, error: %d", id, err);
         return nullptr;
     }
 
@@ -280,9 +282,9 @@ fingerprint_device_t* BiometricsFingerprint::openHal() {
         return nullptr;
     }
 
-    if (kVersion != device->version) {
-        // enforce version on new devices because of HIDL@2.1 translation layer
-        ALOGE("Wrong fp version. Expected %d, got %d", kVersion, device->version);
+    if (device->version != kVersion20 && device->version != kVersion21) {
+        ALOGE("Wrong fp version. Expected %d or %d, got %d",
+              kVersion20, kVersion21, device->version);
         return nullptr;
     }
 

@@ -24,11 +24,9 @@ PRODUCT_PACKAGES += \
     android.hardware.soundtrigger@2.0-service
 
 # Camera
-PRODUCT_PACKAGES += \
-    camera.device@1.0-impl \
-    camera.device@3.2-impl \
-    android.hardware.camera.provider@2.4-impl \
-    android.hardware.camera.provider@2.4-service
+# Use the stock PD1619 camera HIDL wrapper stack. Vivo's provider links its
+# own camera provider extension and behaves differently from the generic
+# android.hardware.camera.provider@2.4 implementation.
 
 # Configstore
 PRODUCT_PACKAGES += \
@@ -53,14 +51,14 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-impl \
     android.hardware.drm@1.0-service
 
+# Gatekeeper
+# Use the stock PD1619 service/impl pair from proprietary-files.txt. The
+# generic service opens a legacy gatekeeper HAL that must match vivo's QSEE
+# userspace.
+
 # Fingerprint
 PRODUCT_PACKAGES += \
     android.hardware.biometrics.fingerprint@2.0-service-custom
-
-# Gatekeeper
-PRODUCT_PACKAGES += \
-    android.hardware.gatekeeper@1.0-impl \
-    android.hardware.gatekeeper@1.0-service
 
 # GNSS
 PRODUCT_PACKAGES += \
@@ -75,9 +73,7 @@ PRODUCT_PACKAGES += \
     android.hardware.health@1.0
 
 # Keymaster
-PRODUCT_PACKAGES += \
-    android.hardware.keymaster@3.0-impl \
-    android.hardware.keymaster@3.0-service
+# Use the stock PD1619 service/impl pair alongside the stock TrustZone blobs.
 
 # Light
 PRODUCT_PACKAGES += \
@@ -124,5 +120,6 @@ PRODUCT_PACKAGES += \
     android.hardware.vr@1.0-service
 
 # Wi-Fi
-PRODUCT_PACKAGES += \
-    android.hardware.wifi@1.0-service
+# Use the stock PD1619 service and vendor extension library. The source-built
+# generic service can load the module now, but it cannot talk to this stock
+# driver through cld80211.

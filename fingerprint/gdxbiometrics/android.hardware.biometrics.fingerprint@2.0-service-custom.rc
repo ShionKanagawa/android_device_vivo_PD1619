@@ -1,0 +1,21 @@
+on property:sys.fingerprint.boot=fpc_1245
+    chown system system /sys/bus/spi/devices/spi3.0/wakeup_enable
+    chown system system /sys/bus/spi/devices/spi3.0/irq
+    chown system system /sys/bus/spi/devices/spi3.0/do_wakeup
+    chown system system /sys/bus/spi/devices/spi3.0/keep_awake
+    chown system system /sys/bus/spi/devices/spi3.0/hw_reset
+    chown system system /sys/bus/spi/devices/spi3.0/regulator_enable
+    chown system system /sys/bus/spi/devices/spi3.0/finger_touch_key
+    enable fps_hal
+
+on property:sys.fingerprint.stop=fps_hal
+    stop fps_hal
+
+service fps_hal /vendor/bin/hw/android.hardware.biometrics.fingerprint@2.0-service-custom
+    # "class hal" causes a race condition on some devices due to files created
+    # in /data. As a workaround, postpone startup until later in boot once
+    # /data is mounted.
+    class late_start
+    user system
+    group system input
+    disabled

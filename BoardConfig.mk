@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DEVICE_PATH := device/leeco/s2
+DEVICE_PATH := device/vivo/PD1619
 
 # Headers
 TARGET_SPECIFIC_HEADER_PATH := $(DEVICE_PATH)/include
@@ -46,18 +46,16 @@ TARGET_NO_BOOTLOADER := true
 TARGET_BOOTLOADER_BOARD_NAME := MSM8952
 
 # Kernel
-BOARD_KERNEL_CMDLINE := console=ttyHSL0,115200,n8 androidboot.console=ttyHSL0 androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 earlyprintk
+BOARD_KERNEL_CMDLINE := console=null androidboot.console=ttyHSL0 androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 earlyprintk product.version=PD1619_A_8.12.1 fingerprint.abbr=8.1.0/OPM1.171019.019 buildvariant=user androidboot.securebootkey=alpha androidboot.securebootkeyhash=60ba997fef6da9f05885fa11f1dd6d2a90d052a257a09c2075d7246cc73c0d43 androidboot.securebootkeyver=1 androidboot.selinux=permissive
 BOARD_KERNEL_BASE := 0x80000000
 BOARD_KERNEL_PAGESIZE := 2048
-BOARD_MKBOOTIMG_ARGS := --ramdisk_offset 0x01000000 --tags_offset 0x00000100
+BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x01000000 --second_offset 0x00f00000 --tags_offset 0x00000100
 BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb
 
 TARGET_KERNEL_ARCH := arm64
 TARGET_KERNEL_HEADER_ARCH := arm64
 
-TARGET_KERNEL_SOURCE := kernel/leeco/msm8976
-TARGET_KERNEL_CROSS_COMPILE_PREFIX := aarch64-linux-android-
-TARGET_KERNEL_CONFIG := lineage_s2_defconfig
+TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel
 
 # ANT+
 BOARD_ANT_WIRELESS_DEVICE := "qualcomm-hidl"
@@ -88,14 +86,18 @@ USE_XML_AUDIO_POLICY_CONF := 1
 # Bluetooth
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := $(DEVICE_PATH)/bluetooth
 BOARD_HAVE_BLUETOOTH := true
-BOARD_HAVE_BLUETOOTH_QCOM := true
-BLUETOOTH_HCI_USE_MCT := true
-QCOM_BT_USE_BTNV := true
-QCOM_BT_USE_SMD_TTY := true
+# Use stock PD1619 bluetooth vendor blobs. Enabling BOARD_HAVE_BLUETOOTH_QCOM
+# makes hardware/qcom/bt-caf define a source libbt-vendor module with the same
+# install path and private Qualcomm tty ioctls that are absent from sanitized
+# headers.
+BOARD_HAVE_BLUETOOTH_QCOM := false
+BLUETOOTH_HCI_USE_MCT := false
+QCOM_BT_USE_BTNV := false
+QCOM_BT_USE_SMD_TTY := false
 
 # Camera
 USE_DEVICE_SPECIFIC_CAMERA := true
-USE_PROPRIETARY_CAMERA := false
+USE_PROPRIETARY_CAMERA := true
 BOARD_QTI_CAMERA_32BIT_ONLY := true
 TARGET_USES_MEDIA_EXTENSIONS := true
 TARGET_USES_QTI_CAMERA_DEVICE := true
@@ -107,10 +109,10 @@ BOARD_GLOBAL_CFLAGS += -DDECAY_TIME_DEFAULT=0
 # Charger
 BOARD_CHARGER_DISABLE_INIT_BLANK := true
 BOARD_CHARGER_ENABLE_SUSPEND := true
-BACKLIGHT_PATH := "/sys/class/leds/lcd-backlight/brightness"
+TARGET_RECOVERY_BACKLIGHT_PATH := /sys/class/leds/wled
 BLINK_PATH := "/sys/class/leds/red/blink"
 WITH_LINEAGE_CHARGER := false
-BOARD_HAL_STATIC_LIBRARIES := libhealthd.s2
+BOARD_HAL_STATIC_LIBRARIES := libhealthd.PD1619
 
 # CNE
 BOARD_USES_QCNE := true
@@ -146,14 +148,18 @@ SF_VSYNC_EVENT_PHASE_OFFSET_NS := 2000000
 VSYNC_EVENT_PHASE_OFFSET_NS := 6000000
 
 # Encryption
-TARGET_HW_DISK_ENCRYPTION := true
+# Stock PD1619 reports ro.crypto.state=unsupported and its fstab does not use
+# encryptable/forceencrypt flags. Keep HW disk encryption disabled for bring-up;
+# enabling it also pulls in libcryptfs_hw, which requires kernel headers that are
+# not generated when building with the stock prebuilt kernel.
+TARGET_HW_DISK_ENCRYPTION := false
 
 # Filesystem
 BOARD_FLASH_BLOCK_SIZE := 131072
 BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 67108864
-BOARD_SYSTEMIMAGE_PARTITION_SIZE := 4294967296
-BOARD_USERDATAIMAGE_PARTITION_SIZE := 57033579520
+BOARD_SYSTEMIMAGE_PARTITION_SIZE := 3221225472
+BOARD_USERDATAIMAGE_PARTITION_SIZE := 57840999424
 BOARD_CACHEIMAGE_PARTITION_SIZE := 268435456
 BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_PERSISTIMAGE_PARTITION_SIZE := 33554432
@@ -172,8 +178,8 @@ DEVICE_MATRIX_FILE   := $(DEVICE_PATH)/compatibility_matrix.xml
 
 # Init
 TARGET_PLATFORM_DEVICE_BASE := /devices/soc.0/
-TARGET_INIT_VENDOR_LIB := libinit_s2
-TARGET_RECOVERY_DEVICE_MODULES := libinit_s2
+TARGET_INIT_VENDOR_LIB := libinit_PD1619
+TARGET_RECOVERY_DEVICE_MODULES := libinit_PD1619
 
 # Keymaster
 TARGET_PROVIDES_KEYMASTER := true
@@ -210,7 +216,6 @@ USE_OPENGL_RENDERER := true
 TARGET_RECOVERY_FSTAB := $(DEVICE_PATH)/rootdir/etc/fstab.qcom
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USES_MKE2FS := true
-TARGET_USERIMAGES_USE_F2FS := true
 
 # RIL
 TARGET_RIL_VARIANT := caf
@@ -223,8 +228,7 @@ BOARD_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy
 
 # Shims
 TARGET_LD_SHIM_LIBS := \
-   /system/vendor/lib64/lib-imsvt.so|libshims_ims.so \
-   /system/bin/mm-qcamera-daemon|libshims_camera.so \
+   /system/vendor/bin/mm-qcamera-daemon|libshims_camera.so \
    /system/vendor/lib64/libril-qc-qmi-1.so|libshims_rild_socket.so
 
 # Wifi
@@ -237,11 +241,14 @@ BOARD_WPA_SUPPLICANT_DRIVER		:= NL80211
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB	:= lib_driver_cmd_$(BOARD_WLAN_DEVICE)
 WIFI_DRIVER_FW_PATH_AP			:= "ap"
 WIFI_DRIVER_FW_PATH_STA			:= "sta"
+WIFI_DRIVER_MODULE_ARG			:= "con_mode=5"
+WIFI_DRIVER_MODULE_NAME			:= "wlan"
+WIFI_DRIVER_MODULE_PATH			:= "/system/lib/modules/wlan.ko"
 WPA_SUPPLICANT_VERSION			:= VER_0_8_X
 TARGET_USES_WCNSS_MAC_ADDR_REV		:= true
 
 # OTA Assert
-TARGET_OTA_ASSERT_DEVICE := s2,le_s2,le_s2_ww
+TARGET_OTA_ASSERT_DEVICE := PD1619,PD1619MA
 
 # inherit from the proprietary version
--include vendor/leeco/s2/BoardConfigVendor.mk
+-include vendor/vivo/PD1619/BoardConfigVendor.mk

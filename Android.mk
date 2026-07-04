@@ -15,9 +15,84 @@
 # limitations under the License.
 
 LOCAL_PATH := $(call my-dir)
+PD1619_DEVICE_PATH := $(LOCAL_PATH)
 
-ifneq ($(filter s2, $(TARGET_DEVICE)),)
-include $(call all-makefiles-under,$(LOCAL_PATH))
+ifneq ($(filter PD1619, $(TARGET_DEVICE)),)
+
+PD1619_LD_CONFIG_SOURCE := $(PD1619_DEVICE_PATH)/configs/ld.config.legacy.txt
+PD1619_LD_CONFIG_TARGET := $(TARGET_OUT_ETC)/ld.config.txt
+
+# O's core_minimal product always pulls in system/core's ld.config.txt module.
+# Keep that module intact, then overwrite its installed file with the stock
+# PD1619 legacy search path so bare dlopen() can find /vendor/${LIB}/hw blobs.
+include $(CLEAR_VARS)
+LOCAL_MODULE := PD1619_ld_config_override
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_PREBUILT_MODULE_FILE := $(PD1619_LD_CONFIG_SOURCE)
+LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
+LOCAL_MODULE_STEM := pd1619_ld_config_override
+LOCAL_ADDITIONAL_DEPENDENCIES := $(PD1619_LD_CONFIG_TARGET)
+LOCAL_POST_INSTALL_CMD := $(hide) cp $(PD1619_LD_CONFIG_SOURCE) $(PD1619_LD_CONFIG_TARGET)
+include $(BUILD_PREBUILT)
+
+PD1619_WIFI_HAL_RC_SOURCE := $(PD1619_DEVICE_PATH)/configs/android.hardware.wifi@1.0-service.rc
+PD1619_WIFI_HAL_RC_TARGET := $(TARGET_OUT_VENDOR_ETC)/init/android.hardware.wifi@1.0-service.rc
+
+# The legacy Wi-Fi HAL loads the stock pronto module via init_module() and
+# touches wlan sysfs parameters. Run this device's service as root without
+# changing the common hardware/interfaces rc.
+include $(CLEAR_VARS)
+LOCAL_MODULE := PD1619_wifi_hal_rc_override
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_PREBUILT_MODULE_FILE := $(PD1619_WIFI_HAL_RC_SOURCE)
+LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR_ETC)
+LOCAL_MODULE_STEM := pd1619_wifi_hal_override.rc
+LOCAL_ADDITIONAL_DEPENDENCIES := $(PD1619_WIFI_HAL_RC_TARGET)
+LOCAL_POST_INSTALL_CMD := $(hide) cp $(PD1619_WIFI_HAL_RC_SOURCE) $(PD1619_WIFI_HAL_RC_TARGET)
+include $(BUILD_PREBUILT)
+
+include $(call all-makefiles-under,$(PD1619_DEVICE_PATH))
+
+ifneq ($(TARGET_PREBUILT_KERNEL),)
+PD1619_S2_KERNEL_SOURCE := $(abspath kernel/leeco/msm8976)
+PD1619_KERNEL_HEADERS_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
+PD1619_KERNEL_HEADERS_INSTALL := $(PD1619_KERNEL_HEADERS_OUT)/usr
+PD1619_KERNEL_HEADERS_STAMP := $(PD1619_KERNEL_HEADERS_INSTALL)/.pd1619_s2_headers_install
+PD1619_BIONIC_KERNEL_HEADER_DIRS := \
+	$(abspath bionic/libc/kernel/uapi) \
+	$(abspath bionic/libc/kernel/android/uapi)
+
+# The stock PD1619 kernel is prebuilt, so Lineage's kernel task will not create
+# INSTALLED_KERNEL_HEADERS. Legacy Qualcomm modules still depend on that path,
+# so generate UAPI headers from the s2 MSM8976 kernel source without building or
+# packaging that kernel.
+.PHONY: INSTALLED_KERNEL_HEADERS
+INSTALLED_KERNEL_HEADERS: $(PD1619_KERNEL_HEADERS_STAMP)
+
+$(PD1619_KERNEL_HEADERS_STAMP): $(PD1619_S2_KERNEL_SOURCE)/Makefile $(PD1619_DEVICE_PATH)/Android.mk
+	@echo "PD1619 s2 kernel headers: $@"
+	@rm -rf $(PD1619_KERNEL_HEADERS_INSTALL)
+	@mkdir -p $(PD1619_KERNEL_HEADERS_OUT)
+	$(hide) $(MAKE) -C $(PD1619_S2_KERNEL_SOURCE) \
+		O=$(abspath $(PD1619_KERNEL_HEADERS_OUT)) \
+		ARCH=$(TARGET_KERNEL_ARCH) \
+		headers_install
+	@kernel_include=$(abspath $(PD1619_KERNEL_HEADERS_INSTALL)/include); \
+	for bionic_headers in $(PD1619_BIONIC_KERNEL_HEADER_DIRS); do \
+		if [ -d "$$bionic_headers" ]; then \
+			(cd "$$bionic_headers" && find . -type f) | while read header; do \
+				rm -f "$$kernel_include/$${header#./}"; \
+			done; \
+		fi; \
+	done
+	@rm -rf $(PD1619_KERNEL_HEADERS_INSTALL)/include/asm
+	@rm -f $(PD1619_KERNEL_HEADERS_INSTALL)/include/linux/android/binder.h
+	@touch $@
+
+$(PD1619_KERNEL_HEADERS_INSTALL): $(PD1619_KERNEL_HEADERS_STAMP)
+endif
 
 include $(CLEAR_VARS)
 
@@ -59,9 +134,12 @@ $(WCNSS_CFG_INI): $(LOCAL_INSTALLED_MODULE)
 	@rm -rf $@
 	$(hide) ln -sf /data/misc/wifi/$(notdir $@) $@
 
-WCNSS_DICT_DAT := $(TARGET_OUT_ETC)/firmware/wlan/prima/WCNSS_wlan_dictionary.dat
-$(WCNSS_DICT_DAT): $(LOCAL_INSTALLED_MODULE)
-	@echo "WCNSS_wlan_dictionary.dat firmware link: $@"
+WCNSS_PERSIST_FIRMWARE := WCNSS_qcom_wlan_nv.bin WCNSS_wlan_dictionary.dat
+WCNSS_PERSIST_SYMLINKS := \
+	$(addprefix $(TARGET_OUT_ETC)/firmware/wlan/prima/,$(WCNSS_PERSIST_FIRMWARE)) \
+	$(addprefix $(TARGET_OUT_VENDOR)/firmware/wlan/prima/,$(WCNSS_PERSIST_FIRMWARE))
+$(WCNSS_PERSIST_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
+	@echo "WCNSS persist firmware link: $@"
 	@mkdir -p $(dir $@)
 	@rm -rf $@
 	$(hide) ln -sf /persist/$(notdir $@) $@
@@ -73,7 +151,15 @@ $(WLAN_MAC): $(LOCAL_INSTALLED_MODULE)
 	@rm -rf $@
 	$(hide) ln -sf /persist/$(notdir $@) $@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_CFG_INI) $(WCNSS_DICT_DAT) $(WLAN_MAC)
+WLAN_MODULE := $(TARGET_OUT)/lib/modules/pronto/pronto_wlan.ko
+WLAN_MODULE_COPY := $(TARGET_OUT)/lib/modules/wlan.ko
+$(WLAN_MODULE_COPY): $(WLAN_MODULE)
+	@echo "WLAN module copy: $@"
+	@mkdir -p $(dir $@)
+	@rm -rf $@
+	$(hide) cp -f $< $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_CFG_INI) $(WCNSS_PERSIST_SYMLINKS) $(WLAN_MAC) $(WLAN_MODULE_COPY)
 
 
 CMNLIB_IMAGES := cmnlib.b00 cmnlib.b01 cmnlib.b02 cmnlib.b03 cmnlib.mdt

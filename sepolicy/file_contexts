@@ -13,7 +13,7 @@
 /sbin/qfipsverify                                           u:object_r:sectest_exec:s0
 /system/bin/ipacm                                           u:object_r:ipacm_exec:s0
 /system/bin/ipacm-diag                                      u:object_r:ipacm-diag_exec:s0
-/system/bin/mm-qcamera-daemon                               u:object_r:mm-qcamerad_exec:s0
+/system/vendor/bin/mm-qcamera-daemon                       u:object_r:mm-qcamerad_exec:s0
 /data/misc/location/xtra/socket_xtra                        u:object_r:location_socket:s0
 /data/misc/location/xtra/socket_hal_xtra                    u:object_r:location_socket:s0
 

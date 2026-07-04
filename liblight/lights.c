@@ -62,6 +62,12 @@ char const*const BLUE_LED_FILE
 char const*const LCD_FILE
         = "/sys/class/leds/lcd-backlight/brightness";
 
+char const*const LCD_LM3697_FILE
+        = "/sys/class/leds/lm3697-backlight/brightness";
+
+char const*const WLED_FILE
+        = "/sys/class/leds/wled/brightness";
+
 char const*const RED_BREATH_FILE
         = "/sys/class/leds/red/led_time";
 
@@ -203,6 +209,23 @@ write_int(char const* path, int value)
 }
 
 static int
+write_optional_int(char const* path, int value)
+{
+    int fd;
+
+    fd = open(path, O_RDWR);
+    if (fd >= 0) {
+        char buffer[20];
+        int bytes = snprintf(buffer, sizeof(buffer), "%d\n", value);
+        ssize_t amt = write(fd, buffer, (size_t)bytes);
+        close(fd);
+        return amt == -1 ? -errno : 0;
+    }
+
+    return -errno;
+}
+
+static int
 write_str(char const* path, char *value)
 {
     int fd;
@@ -273,13 +296,24 @@ set_light_backlight(struct light_device_t* dev,
         struct light_state_t const* state)
 {
     int err = 0;
+    int lm3697_err;
+    int wled_err;
     int brightness = rgb_to_brightness(state);
+    int wled_brightness = (brightness * 4095 + 127) / 255;
     if(!dev) {
         return -1;
     }
     pthread_mutex_lock(&g_lock);
     err = write_int(LCD_FILE, brightness);
+    lm3697_err = write_optional_int(LCD_LM3697_FILE, brightness);
+    wled_err = write_optional_int(WLED_FILE, wled_brightness);
     pthread_mutex_unlock(&g_lock);
+    if (err && !lm3697_err) {
+        err = 0;
+    }
+    if (err && !wled_err) {
+        err = 0;
+    }
     return err;
 }
 
@@ -510,7 +544,7 @@ struct hw_module_t HAL_MODULE_INFO_SYM = {
     .version_major = 1,
     .version_minor = 0,
     .id = LIGHTS_HARDWARE_MODULE_ID,
-    .name = "LeEco s2 Lights Module",
+    .name = "vivo PD1619 Lights Module",
     .author = "The LineageOS Project",
     .methods = &lights_module_methods,
 };

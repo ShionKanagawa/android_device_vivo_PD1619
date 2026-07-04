@@ -463,43 +463,20 @@ esac
 #
 # Make modem config folder and copy firmware config to that folder
 #
-#rm -rf /data/misc/radio/modem_config
-#mkdir /data/misc/radio/modem_config
-#chmod 770 /data/misc/radio/modem_config
-#cp -r /firmware/image/modem_pr/mbn_ota/* /data/misc/radio/modem_config
-#chown -hR radio.radio /data/misc/radio/modem_config
-#echo 1 > /data/misc/radio/copy_complete
-rm -rf /data/vendor/radio/modem_config/mcfg_sw
-mkdir -p /data/vendor/radio/modem_config/mcfg_sw
+rm -rf /data/vendor/radio/modem_config
+mkdir -p /data/vendor/radio/modem_config
 chmod 770 /data/vendor/radio/modem_config
-chmod 770 /data/vendor/radio/modem_config/mcfg_sw
-product_name=`getprop ro.product.name`
 
-case "$product_name" in
-    "Le2_CN" | "Le2_CU" | "Le2_CM" | "Le2_HK")
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/cmcc.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/ct.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/cu.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/row.mbn /data/vendor/radio/modem_config/mcfg_sw
-    ;;
-    "Le2_NA")
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/att.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/tmo.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/row.mbn /data/vendor/radio/modem_config/mcfg_sw
-    ;;
-    "Le2_WW")
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/rjil.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/row.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/cmcc.mbn /data/vendor/radio/modem_config/mcfg_sw
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/cu.mbn /data/vendor/radio/modem_config/mcfg_sw
-    ;;
-    *)
-    cp -r /firmware/image/modem_pr/mcfg/configs/mcfg_sw/generic/mbn_ota/row.mbn /data/vendor/radio/modem_config/mcfg_sw
-    ;;
-esac
-chmod 770 /data/vendor/radio/modem_config/mcfg_sw/*
+if [ -d /firmware/image/modem_pr/mcfg ]; then
+    cp -r /firmware/image/modem_pr/mcfg/* /data/vendor/radio/modem_config/
+fi
+
+if [ -f /firmware/image/modem_pr/mbn_ota.txt ]; then
+    cp /firmware/image/modem_pr/mbn_ota.txt /data/vendor/radio/modem_config/mbn_ota.txt
+fi
+
+chmod -R 770 /data/vendor/radio/modem_config
 chown -hR radio.radio /data/vendor/radio/modem_config
-chown -hR radio.radio /data/vendor/radio/modem_config/mcfg_sw
 cp /firmware/verinfo/ver_info.txt /data/vendor/radio/ver_info.txt
 chown radio.radio /data/vendor/radio/ver_info.txt
 echo 1 > /data/vendor/radio/copy_complete

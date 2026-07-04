@@ -25,8 +25,8 @@
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-import /vendor/etc/init/hw/init.qcom.power.rc
-import /vendor/etc/init/hw/init.target.rc
+import /init.qcom.power.rc
+import /init.target.rc
 
 on early-init
     mount debugfs debugfs /sys/kernel/debug
@@ -50,6 +50,8 @@ on init
 
     # Turn off backlight on blank
     write /sys/class/leds/lcd-backlight/trigger "backlight"
+    write /sys/class/leds/lm3697-backlight/trigger "none"
+    write /sys/class/leds/wled/trigger "none"
 
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing
@@ -175,8 +177,13 @@ on boot
     chown root system /sys/kernel/dload/dload_mode
     chmod 0660 /sys/kernel/dload/dload_mode
 
-    # Wifi firmware reload path
+    # Stock PD1619 loads pronto from init; keep wlan.driver.status in sync so
+    # the legacy O Wi-Fi HAL does not retry init_module() after another service
+    # has already inserted wlan.
+    setprop wifi.interface wlan0
+    insmod /system/lib/modules/wlan.ko con_mode=5
     chown wifi wifi /sys/module/wlan/parameters/fwpath
+    setprop wlan.driver.status ok
 
     # Create directory used for display
     mkdir /persist/display 0770 system graphics
@@ -428,7 +435,7 @@ on property:wc_transport.start_hci=true
 on property:wc_transport.start_hci=false
     stop start_hci_filter
 
-service start_hci_filter /system/bin/wcnss_filter
+service start_hci_filter /vendor/bin/wcnss_filter
     class late_start
     user bluetooth
     group bluetooth diag
@@ -441,14 +448,14 @@ on property:wc_transport.start_root=true
 on property:wc_transport.start_root=false
     stop hci_filter_root
 
-service hci_filter_root /system/bin/wcnss_filter
+service hci_filter_root /vendor/bin/wcnss_filter
     class late_start
     user bluetooth
     group bluetooth diag system
     seclabel u:r:wcnss_filter:s0
     disabled
 
-service config_bt_addr /system/vendor/bin/btnvtool -O
+service config_bt_addr /vendor/bin/btnvtool -O
     class core
     user bluetooth
     group bluetooth radio
@@ -557,7 +564,7 @@ service vendor.msm_irqbal_lb /vendor/bin/msm_irqbalance -f /system/vendor/etc/ms
     disabled
 
 on charger
-    setprop persist.sys.usb.config mass_storage
+    setprop persist.sys.usb.config mass_storage,adb
     load_system_props
 
 on property:init.svc.surfaceflinger=restarting

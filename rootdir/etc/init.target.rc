@@ -26,15 +26,42 @@
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-import /vendor/etc/init/hw/init.s2.usb.rc
+import /init.PD1619.usb.rc
 
 on early-init
+    mkdir /firmware 0771 system system
+    mkdir /system 0777 root root
+    mkdir /oem 0771 system system
+    mkdir /dsp 0771 media media
     symlink /data/tombstones /tombstones
 
 on fs
+    write /dev/kmsg "PD1619 init: on fs"
     wait /dev/block/platform/soc.0/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc.0/${ro.boot.bootdevice} /dev/block/bootdevice
-    mount_all /vendor/etc/fstab.qcom
+    mkdir /cache 0770 system cache
+    write /dev/kmsg "PD1619 init: before mount_all"
+    mount_all /fstab.qcom
+    write /dev/kmsg "PD1619 init: after mount_all"
+    rm /cache/pd1619-last-stage
+    rm /cache/pd1619-stage-on-fs
+    rm /cache/pd1619-stage-fs
+    rm /cache/pd1619-stage-usb
+    rm /cache/pd1619-stage-post-fs
+    rm /cache/pd1619-stage-post-fs-data
+    rm /cache/pd1619-stage-early-boot
+    rm /cache/pd1619-stage-boot
+    rm /cache/pd1619-stage-zygote
+    rm /cache/pd1619-stage-surfaceflinger
+    write /cache/pd1619-stage-on-fs on-fs-after-mount_all
+    write /cache/pd1619-stage-fs fs-mount_all-returned
+    write /cache/pd1619-last-stage fs-mount_all-returned
+
+    setprop persist.sys.usb.config mass_storage,adb
+    setprop sys.usb.config mass_storage,adb
+    start adbd
+    write /cache/pd1619-stage-usb fs-adb-requested
+    write /cache/pd1619-last-stage fs-adb-requested
 
     mkdir /persist/data 0700 system system
     
@@ -44,7 +71,16 @@ on fs
     restorecon_recursive /persist
     restorecon_recursive /dsp
 
+on post-fs
+    write /cache/pd1619-stage-post-fs post-fs-reached
+    write /cache/pd1619-last-stage post-fs-reached
+    setprop sys.usb.config mass_storage,adb
+    start adbd
+
 on post-fs-data
+    write /cache/pd1619-stage-post-fs-data post-fs-data-reached
+    write /cache/pd1619-last-stage post-fs-data-reached
+
     mkdir /data/tombstones 0771 system system
     mkdir /tombstones/modem 0771 system system
     mkdir /tombstones/lpass 0771 system system
@@ -93,12 +129,6 @@ on post-fs-data
     chown media media /sys/module/snd_soc_msm8x16/parameters/headset_swap
     chown media media /sys/module/snd_soc_msm8x16/parameters/usb_audio_mode
 
-    # fingerprint
-    chown system system  /dev/goodix_fp
-    chmod 0644 /dev/goodix_fp
-    chown system system  /vendor/bin/gx_fpd
-    chmod 0755 /vendor/bin/gx_fpd
-
     chmod 660 /persist/serialno
     chown system system /persist/serialno
 
@@ -146,26 +176,34 @@ on post-fs-data
 
     # default display backlight max brightness
     write /sys/class/leds/lcd-backlight/max_brightness 255
+    chown system system /sys/class/leds/lm3697-backlight/brightness
+    chmod 0664 /sys/class/leds/lm3697-backlight/brightness
+    chown system system /sys/class/leds/wled/brightness
+    chmod 0664 /sys/class/leds/wled/brightness
 
     # reduced power rate when normal charge
     chown system system /sys/class/power_supply/battery/le_quick_charge_mode
     chmod 666 /sys/class/power_supply/battery/le_quick_charge_mode
 
-#Create folder for mm-qcamera-daemon
-mkdir /data/vendor/camera 0770 camera camera
+    # Create folder for mm-qcamera-daemon
+    mkdir /data/vendor/camera 0770 camera camera
 
 # start camera server as daemon
-service qcamerasvr /system/bin/mm-qcamera-daemon
+service qcamerasvr /vendor/bin/mm-qcamera-daemon
     class late_start
     user camera
     group camera system inet input graphics
+
+on early-boot
+    write /cache/pd1619-stage-early-boot early-boot-reached
+    write /cache/pd1619-last-stage early-boot-reached
 
 on init
    write /sys/module/qpnp_rtc/parameters/poweron_alarm 1
 
 # enable zram
 on property:ro.config.zram=true
-    swapon_all fstab.qcom
+    swapon_all /fstab.qcom
     write /proc/sys/vm/swappiness 100
 
 # Allow usb charging to be disabled peristently
@@ -195,7 +233,23 @@ service thermal-engine /system/vendor/bin/thermal-engine
    group root
 
 on boot
+    write /cache/pd1619-stage-boot boot-reached
+    write /cache/pd1619-last-stage boot-reached
+    setprop persist.sys.usb.config mass_storage,adb
+    setprop sys.usb.config mass_storage,adb
+    start adbd
+
     start rmt_storage
+
+    # access permission for secure touch
+    chmod 0660 /sys/devices/soc.0/78b7000.i2c/i2c-3/3-0020/input/input0/secure_touch_enable
+    chmod 0440 /sys/devices/soc.0/78b7000.i2c/i2c-3/3-0020/input/input0/secure_touch
+    chmod 0660 /sys/devices/soc.0/78b8000.i2c/i2c-4/4-0020/input/input0/secure_touch_enable
+    chmod 0440 /sys/devices/soc.0/78b8000.i2c/i2c-4/4-0020/input/input0/secure_touch
+    chown system drmrpc /sys/devices/soc.0/78b7000.i2c/i2c-3/3-0020/input/input0/secure_touch_enable
+    chown system drmrpc /sys/devices/soc.0/78b7000.i2c/i2c-3/3-0020/input/input0/secure_touch
+    chown system drmrpc /sys/devices/soc.0/78b8000.i2c/i2c-4/4-0020/input/input0/secure_touch_enable
+    chown system drmrpc /sys/devices/soc.0/78b8000.i2c/i2c-4/4-0020/input/input0/secure_touch
 
     chown system system /proc/touchpanel/capacitive_keys_enable
 
@@ -218,6 +272,8 @@ on property:init.svc.surfaceflinger=stopped
     stop ppd
 
 on property:init.svc.surfaceflinger=running
+    write /cache/pd1619-stage-surfaceflinger surfaceflinger-running
+    write /cache/pd1619-last-stage surfaceflinger-running
     start ppd
 
 # workaround for color service issue
@@ -228,6 +284,8 @@ on property:init.svc.zygote=stopped
     stop ppd
 
 on property:init.svc.zygote=running
+    write /cache/pd1619-stage-zygote zygote-running
+    write /cache/pd1619-last-stage zygote-running
     start ppd
 
 on property:init.svc.zygote=restarting
@@ -270,21 +328,10 @@ on property:vendor.ims.DATA_DAEMON_STATUS=1
     start ims_rtp_daemon
     start imsrcsservice
 
-service fingerprintd /system/bin/fingerprintd
-    class late_start
-    socket fpce stream 0666 system system
-    user system
-
-service gx_fpd /system/bin/gx_fpd
-    class late_start
-    user root
-    group root system
-    seclabel u:r:goodix:s0
-
 on charger
-    setprop persist.sys.usb.config mass_storage
+    setprop persist.sys.usb.config mass_storage,adb
     start qcom-post-boot
-    setprop persist.sys.usb.config mass_storage
+    setprop sys.usb.config mass_storage,adb
     start hvdcp_opti
     start thermal-engine
 

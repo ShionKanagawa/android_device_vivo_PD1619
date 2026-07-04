@@ -19,7 +19,7 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/product_launched_with_m.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
 
 # Get non-open-source specific aspects
-$(call inherit-product, vendor/leeco/s2/s2-vendor.mk)
+$(call inherit-product, vendor/vivo/PD1619/PD1619-vendor.mk)
 
 # Overlay
 DEVICE_PACKAGE_OVERLAYS += \
@@ -39,6 +39,10 @@ $(call inherit-product, frameworks/native/build/phone-xxhdpi-3072-dalvik-heap.mk
 # Boot animation
 TARGET_SCREEN_HEIGHT := 1920
 TARGET_SCREEN_WIDTH := 1080
+
+# Bring-up debugging
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    ro.adb.secure=0
 
 # HIDL HALs
 $(call inherit-product, $(LOCAL_PATH)/hidl-hals.mk)
@@ -90,19 +94,11 @@ PRODUCT_PACKAGES += \
 
 # Audio
 PRODUCT_PACKAGES += \
-    audio.primary.msm8952 \
-    audio.a2dp.default \
-    audio_amplifier.msm8952 \
-    audio.r_submix.default \
-    audio.usb.default
+    audio.a2dp.default
 
 PRODUCT_PACKAGES += \
     libaudio-resampler \
-    libqcompostprocbundle \
-    libqcomvisualizer \
-    libqcomvoiceprocessing \
-    libvolumelistener \
-    libtinycompress \
+    libaudioroute \
     tinymix
 
 PRODUCT_COPY_FILES += \
@@ -114,7 +110,12 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/audio/audio_policy_configuration.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_policy_configuration.xml \
     $(LOCAL_PATH)/audio/audio_platform_info.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_platform_info.xml \
     $(LOCAL_PATH)/audio/audio_platform_info_extcodec.xml:$(TARGET_COPY_OUT_VENDOR)/etc/audio_platform_info_extcodec.xml \
+    $(LOCAL_PATH)/audio/mixer_paths.xml:$(TARGET_COPY_OUT_VENDOR)/etc/mixer_paths.xml \
+    $(LOCAL_PATH)/audio/mixer_paths.xml:$(TARGET_COPY_OUT_VENDOR)/etc/mixer_paths.PD1619.xml \
     $(LOCAL_PATH)/audio/mixer_paths_qrd_skun_cajon.xml:$(TARGET_COPY_OUT_VENDOR)/etc/mixer_paths_qrd_skun_cajon.xml
+
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/audio/sound_trigger_mixer_paths.xml:system/etc/sound_trigger_mixer_paths.xml
 
 # XML Audio configuration files
 PRODUCT_COPY_FILES += \
@@ -129,8 +130,8 @@ PRODUCT_COPY_FILES +=  \
     $(LOCAL_PATH)/audio/dax-default.xml:$(TARGET_COPY_OUT_VENDOR)/etc/dolby/dax-default.xml
 
 # Bluetooth
-PRODUCT_PACKAGES += \
-    libbt-vendor
+# Stock PD1619 ships libbt-vendor.so. Use it instead of the CAF source module,
+# which expects Qualcomm private tty PM ioctls missing from sanitized headers.
 
 # Camera
 PRODUCT_PACKAGES += \
@@ -170,18 +171,13 @@ PRODUCT_PACKAGES += \
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/ad_calib.cfg:system/etc/ad_calib.cfg
 
-# Doze mode
-PRODUCT_PACKAGES += \
-    Doze
-
-# Fingerprint
-PRODUCT_PACKAGES += \
-    fingerprint.msm8952 \
-    fingerprintd
-
 # For android_filesystem_config.h
 PRODUCT_PACKAGES += \
      fs_config_files
+
+# Fingerprint
+PRODUCT_PACKAGES += \
+    fingerprint.msm8952
 
 # GPS
 PRODUCT_PACKAGES += \
@@ -227,10 +223,8 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/sec_config:$(TARGET_COPY_OUT_VENDOR)/etc/sec_config
 
 # IPv6
-PRODUCT_PACKAGES += \
-    ebtables \
-    ethertypes \
-    libebtc
+# Stock PD1619 ships prebuilt ebtables/libebtc. Use those instead of building
+# external/ebtables, which requires generated kernel headers.
 
 # IRQ
 PRODUCT_COPY_FILES += \
@@ -244,7 +238,6 @@ PRODUCT_PACKAGES += \
 # Libshims
 PRODUCT_PACKAGES += \
     libshims_camera \
-    libshims_ims \
     libshims_rild_socket
 
 # Lights
@@ -255,16 +248,8 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     vendor.lineage.livedisplay@1.0-service-legacymm
 
-# Media
-PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/media_codecs.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs.xml \
-    $(LOCAL_PATH)/configs/media_codecs_performance.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_performance.xml \
-    $(LOCAL_PATH)/configs/media_profiles_V1_0.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_profiles_V1_0.xml \
-
-PRODUCT_COPY_FILES += \
-    frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_audio.xml \
-    frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_telephony.xml \
-    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:$(TARGET_COPY_OUT_VENDOR)/etc/media_codecs_google_video.xml
+# Media configs are extracted from stock PD1619 so they match the proprietary
+# OMX stack.
 
 # Netutils
 PRODUCT_PACKAGES += \
@@ -272,22 +257,8 @@ PRODUCT_PACKAGES += \
     libandroid_net
 
 # OMX
-PRODUCT_PACKAGES += \
-    libc2dcolorconvert \
-    libextmedia_jni \
-    libOmxAacEnc \
-    libOmxAmrEnc \
-    libOmxCore \
-    libOmxEvrcEnc \
-    libOmxQcelp13Enc \
-    libOmxSwVencMpeg4 \
-    libOmxSwVencHevc \
-    libOmxVdec \
-    libOmxVdecHevc \
-    libOmxVidcCommon \
-    libOmxVenc \
-    libstagefrighthw
-
+# Stock PD1619 ships the Qualcomm OMX/c2d/stagefrighthw stack. Use prebuilts
+# for first boot instead of building media-caf against kernel VIDC headers.
 
 # Powerhint configuration file
 PRODUCT_COPY_FILES += \
@@ -302,6 +273,11 @@ PRODUCT_PACKAGES += \
     libtinyxml \
     libxml2
 
+# Device-specific installed-file overrides
+PRODUCT_PACKAGES += \
+    PD1619_ld_config_override \
+    PD1619_wifi_hal_rc_override
+
 # Ramdisk
 PRODUCT_PACKAGES += \
     fstab.qcom \
@@ -310,7 +286,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     init.qcom.rc \
     init.target.rc \
-    init.s2.usb.rc \
+    init.PD1619.usb.rc \
     init.qcom.power.rc \
     ueventd.qcom.rc
 
@@ -327,6 +303,9 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/seccomp_policy/mediaextractor.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediaextractor.policy
 
 # Sensors
+PRODUCT_PACKAGES += \
+    libsensorndkbridge
+
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/sensors/sensor_def_qcomdev.conf:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/sensor_def_qcomdev.conf \
     $(LOCAL_PATH)/sensors/sensors_dbg_config.txt:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/sensors_dbg_config.txt \
@@ -369,7 +348,6 @@ PRODUCT_COPY_FILES += \
 # Wifi
 PRODUCT_PACKAGES += \
     libqsap_sdk \
-    libQWiFiSoftApCfg \
     libwpa_client \
     hostapd \
     wifilogd \
@@ -385,7 +363,6 @@ PRODUCT_PACKAGES += \
     wcnss_service
 
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/wifi/WCNSS_cfg.dat:system/etc/firmware/wlan/prima/WCNSS_cfg.dat \
     $(LOCAL_PATH)/wifi/WCNSS_qcom_cfg.ini:system/etc/firmware/wlan/prima/WCNSS_qcom_cfg.ini \
     $(LOCAL_PATH)/wifi/WCNSS_qcom_cfg.ini:$(TARGET_COPY_OUT_VENDOR)/etc/wifi/WCNSS_qcom_cfg.ini
 

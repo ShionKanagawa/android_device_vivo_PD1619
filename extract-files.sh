@@ -18,8 +18,8 @@
 
 set -e
 
-DEVICE=s2
-VENDOR=leeco
+DEVICE=PD1619
+VENDOR=vivo
 
 # Load extractutils and do some sanity checks
 MY_DIR="${BASH_SOURCE%/*}"
@@ -55,6 +55,19 @@ setup_vendor "$DEVICE" "$VENDOR" "$LINEAGE_ROOT"
 
 extract "$MY_DIR"/proprietary-files.txt "$SRC"
 
-extract "$MY_DIR"/proprietary-files-qc.txt "$SRC"
+FRONT_FLASH_CONFIG="$LINEAGE_ROOT/vendor/$VENDOR/$DEVICE/proprietary/etc/camera/frontFlashConfig.xml"
+if [ -f "$FRONT_FLASH_CONFIG" ] && ! grep -q "<frontFlashConfig>" "$FRONT_FLASH_CONFIG"; then
+    TMP_FRONT_FLASH_CONFIG="$(mktemp)"
+    if head -n 1 "$FRONT_FLASH_CONFIG" | grep -q "^<?xml"; then
+        head -n 1 "$FRONT_FLASH_CONFIG" > "$TMP_FRONT_FLASH_CONFIG"
+        echo "<frontFlashConfig>" >> "$TMP_FRONT_FLASH_CONFIG"
+        tail -n +2 "$FRONT_FLASH_CONFIG" >> "$TMP_FRONT_FLASH_CONFIG"
+    else
+        echo "<frontFlashConfig>" > "$TMP_FRONT_FLASH_CONFIG"
+        cat "$FRONT_FLASH_CONFIG" >> "$TMP_FRONT_FLASH_CONFIG"
+    fi
+    echo "</frontFlashConfig>" >> "$TMP_FRONT_FLASH_CONFIG"
+    mv "$TMP_FRONT_FLASH_CONFIG" "$FRONT_FLASH_CONFIG"
+fi
 
 "$MY_DIR"/setup-makefiles.sh
