@@ -156,10 +156,10 @@ case "$baseband" in
         ;;
 esac
 
-cp -f /etc/sensors/sensors_dbg_config.txt /persist/sensors/sensors_dbg_config.txt
-chmod 664 /persist/sensors/sensors_dbg_config.txt
-
-start_sensors
+if [ -f /vendor/etc/sensors/sensors_dbg_config.txt ]; then
+    cp -f /vendor/etc/sensors/sensors_dbg_config.txt /persist/sensors/sensors_dbg_config.txt
+    chmod 664 /persist/sensors/sensors_dbg_config.txt
+fi
 start_copying_prebuilt_qcril_db
 
 if [ -f /sys/class/graphics/fb0/modes ]; then
