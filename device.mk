@@ -94,6 +94,9 @@ PRODUCT_PACKAGES += \
 
 # Audio
 PRODUCT_PACKAGES += \
+    PD1619Parts
+
+PRODUCT_PACKAGES += \
     audio.a2dp.default
 
 PRODUCT_PACKAGES += \
