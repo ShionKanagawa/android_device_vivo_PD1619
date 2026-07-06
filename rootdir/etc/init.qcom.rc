@@ -50,8 +50,8 @@ on init
 
     # Turn off backlight on blank
     write /sys/class/leds/lcd-backlight/trigger "backlight"
-    write /sys/class/leds/lm3697-backlight/trigger "none"
-    write /sys/class/leds/wled/trigger "none"
+    write /sys/class/leds/lm3697-backlight/trigger "backlight"
+    write /sys/class/leds/wled/trigger "backlight"
 
 on post-fs
     chmod 0755 /sys/kernel/debug/tracing

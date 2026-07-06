@@ -27,7 +27,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <math.h>
 
 #include <sys/types.h>
 
@@ -40,6 +39,7 @@ static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct light_state_t g_notification;
 static struct light_state_t g_battery;
 static struct light_state_t g_attention;
+static int g_last_backlight = -1;
 
 char const*const RED_LED_FILE
         = "/sys/class/leds/red/brightness";
@@ -50,14 +50,8 @@ char const*const RED_BLINK_FILE
 char const*const GREEN_BLINK_FILE
 	= "/sys/class/leds/green/blink";
 
-char const*const BLUE_BLINK_FILE
-	= "/sys/class/leds/blue/blink";
-
 char const*const GREEN_LED_FILE
         = "/sys/class/leds/green/brightness";
-
-char const*const BLUE_LED_FILE
-        = "/sys/class/leds/blue/brightness";
 
 char const*const LCD_FILE
         = "/sys/class/leds/lcd-backlight/brightness";
@@ -68,106 +62,8 @@ char const*const LCD_LM3697_FILE
 char const*const WLED_FILE
         = "/sys/class/leds/wled/brightness";
 
-char const*const RED_BREATH_FILE
-        = "/sys/class/leds/red/led_time";
-
-char const*const GREEN_BREATH_FILE
-        = "/sys/class/leds/green/led_time";
-
-char const*const BLUE_BREATH_FILE
-        = "/sys/class/leds/blue/led_time";
-
 char const*const BUTTON_FILE
         = "/sys/class/leds/button-backlight/brightness";
-
-struct color {
-    unsigned int r, g, b;
-    float _L, _a, _b;
-};
-
-// this hardware only allows primary colors
-static struct color colors[] = {
-    { 255,   0,   0, 0, 0, 0 }, // red
-    { 255, 255,   0, 0, 0, 0 }, // yellow
-    {   0, 255,   0, 0, 0, 0 }, // green
-    {   0, 255, 255, 0, 0, 0 }, // cyan
-    {   0,   0, 255, 0, 0, 0 }, // blue
-    { 255,   0, 255, 0, 0, 0 }, // magenta
-    { 255, 255, 255, 0, 0, 0 }, // white
-    { 127, 127, 127, 0, 0, 0 }, // grey
-    {   0,   0,   0, 0, 0, 0 }, // black
-};
-
-#define MAX_COLOR 9
-
-// Convert RGB to L*a*b colorspace
-// from http://www.brucelindbloom.com
-static void rgb2lab(unsigned int R, unsigned int G, unsigned int B,
-                    float *_L, float *_a, float *_b) {
-
-    float r, g, b, X, Y, Z, fx, fy, fz, xr, yr, zr;
-    float Ls, as, bs;
-    float eps = 216.f / 24389.f;
-    float k = 24389.f / 27.f;
-
-    float Xr = 0.964221f;  // reference white D50
-    float Yr = 1.0f;
-    float Zr = 0.825211f;
-
-    // RGB to XYZ
-    r = R / 255.f; //R 0..1
-    g = G / 255.f; //G 0..1
-    b = B / 255.f; //B 0..1
-
-    // assuming sRGB (D65)
-    if (r <= 0.04045)
-        r = r / 12;
-    else
-        r = (float) pow((r + 0.055) / 1.055, 2.4);
-
-    if (g <= 0.04045)
-        g = g / 12;
-    else
-        g = (float) pow((g + 0.055) / 1.055, 2.4);
-
-    if (b <= 0.04045)
-        b = b / 12;
-    else
-        b = (float) pow((b + 0.055) / 1.055, 2.4);
-
-
-    X = 0.436052025f * r + 0.385081593f * g + 0.143087414f * b;
-    Y = 0.222491598f * r + 0.71688606f * g + 0.060621486f * b;
-    Z = 0.013929122f * r + 0.097097002f * g + 0.71418547f * b;
-
-    // XYZ to Lab
-    xr = X / Xr;
-    yr = Y / Yr;
-    zr = Z / Zr;
-
-    if (xr > eps)
-        fx = (float) pow(xr, 1 / 3.);
-    else
-        fx = (float) ((k * xr + 16.) / 116.);
-
-    if (yr > eps)
-        fy = (float) pow(yr, 1 / 3.);
-    else
-        fy = (float) ((k * yr + 16.) / 116.);
-
-    if (zr > eps)
-        fz = (float) pow(zr, 1 / 3.);
-    else
-        fz = (float) ((k * zr + 16.) / 116);
-
-    Ls = (116 * fy) - 16;
-    as = 500 * (fx - fy);
-    bs = 200 * (fy - fz);
-
-    *_L = (2.55 * Ls + .5);
-    *_a = (as + .5);
-    *_b = (bs + .5);
-}
 
 /**
  * device methods
@@ -175,15 +71,6 @@ static void rgb2lab(unsigned int R, unsigned int G, unsigned int B,
 
 void init_globals(void)
 {
-    int i = 0;
-    for (i = 0; i < MAX_COLOR; i++) {
-        rgb2lab(colors[i].r, colors[i].g, colors[i].b,
-                &colors[i]._L, &colors[i]._a, &colors[i]._b);
-    }
-
-    // init the mutex
-    pthread_mutex_init(&g_lock, NULL);
-
 }
 
 static int
@@ -226,27 +113,6 @@ write_optional_int(char const* path, int value)
 }
 
 static int
-write_str(char const* path, char *value)
-{
-    int fd;
-    static int already_warned = 0;
-
-    fd = open(path, O_RDWR);
-    if (fd >= 0) {
-        char buffer[20];
-        ssize_t amt = write(fd, value, (size_t)strlen(value));
-        close(fd);
-        return amt == -1 ? -errno : 0;
-    } else {
-        if (already_warned == 0) {
-            ALOGE("write_str failed to open %s\n", path);
-            already_warned = 1;
-        }
-        return -errno;
-    }
-}
-
-static int
 is_lit(struct light_state_t const* state)
 {
     return state->color & 0x00ffffff;
@@ -260,83 +126,88 @@ rgb_to_brightness(struct light_state_t const* state)
             + (150*((color>>8)&0x00ff)) + (29*(color&0x00ff))) >> 8;
 }
 
-// find the color with the shortest distance
-static struct color *
-nearest_color(unsigned int r, unsigned int g, unsigned int b)
-{
-    int i = 0;
-    float _L, _a, _b;
-    double L_dist, a_dist, b_dist, total;
-    double distance = 3 * 255;
-
-    struct color *nearest = NULL;
-
-    rgb2lab(r, g, b, &_L, &_a, &_b);
-
-    ALOGV("%s: r=%d g=%d b=%d L=%f a=%f b=%f", __func__,
-            r, g, b, _L, _a, _b);
-
-    for (i = 0; i < MAX_COLOR; i++) {
-        L_dist = pow(_L - colors[i]._L, 2);
-        a_dist = pow(_a - colors[i]._a, 2);
-        b_dist = pow(_b - colors[i]._b, 2);
-        total = sqrt(L_dist + a_dist + b_dist);
-        ALOGV("%s: total %f distance %f", __func__, total, distance);
-        if (total < distance) {
-            nearest = &colors[i];
-            distance = total;
-        }
-    }
-
-    return nearest;
-}
-
 static int
 set_light_backlight(struct light_device_t* dev,
         struct light_state_t const* state)
 {
     int err = 0;
-    int lm3697_err;
-    int wled_err;
     int brightness = rgb_to_brightness(state);
-    int wled_brightness = (brightness * 4095 + 127) / 255;
     if(!dev) {
         return -1;
     }
     pthread_mutex_lock(&g_lock);
-    err = write_int(LCD_FILE, brightness);
-    lm3697_err = write_optional_int(LCD_LM3697_FILE, brightness);
-    wled_err = write_optional_int(WLED_FILE, wled_brightness);
+    if (brightness == g_last_backlight) {
+        pthread_mutex_unlock(&g_lock);
+        return 0;
+    }
+
+    err = write_int(LCD_LM3697_FILE, brightness);
+    if (!err) {
+        g_last_backlight = brightness;
+    }
     pthread_mutex_unlock(&g_lock);
-    if (err && !lm3697_err) {
-        err = 0;
-    }
-    if (err && !wled_err) {
-        err = 0;
-    }
     return err;
+}
+
+enum speaker_led_color {
+    SPEAKER_LED_OFF = 0,
+    SPEAKER_LED_RED,
+    SPEAKER_LED_GREEN,
+};
+
+static int
+get_speaker_led_color(struct light_state_t const* state)
+{
+    int red;
+    int green;
+    int blue;
+    unsigned int colorRGB;
+
+    if (state == NULL) {
+        return SPEAKER_LED_OFF;
+    }
+
+    colorRGB = state->color;
+    red = (colorRGB >> 16) & 0xFF;
+    green = (colorRGB >> 8) & 0xFF;
+    blue = colorRGB & 0xFF;
+
+    if (!red && !green && !blue) {
+        return SPEAKER_LED_OFF;
+    }
+
+    if (red && !green && !blue) {
+        return SPEAKER_LED_RED;
+    }
+
+    // PD1619 only has red and green. Notifications and charging should use
+    // green; low-battery requests come through as pure red.
+    return SPEAKER_LED_GREEN;
+}
+
+static void
+reset_speaker_light_locked(void)
+{
+    write_optional_int(RED_BLINK_FILE, 0);
+    write_optional_int(GREEN_BLINK_FILE, 0);
+    write_int(RED_LED_FILE, 0);
+    write_int(GREEN_LED_FILE, 0);
 }
 
 static int
 set_speaker_light_locked(struct light_device_t* dev,
         struct light_state_t const* state)
 {
-    int red, green, blue;
     int blink;
     int onMS, offMS;
-    unsigned int colorRGB;
-    char breath_pattern[64] = { 0, };
-    struct color *nearest = NULL;
+    int led_color;
 
     if(!dev) {
         return -1;
     }
 
-    write_int(RED_LED_FILE, 0);
-    write_int(GREEN_LED_FILE, 0);
-    write_int(BLUE_LED_FILE, 0);
-
     if (state == NULL) {
+        reset_speaker_light_locked();
         return 0;
     }
 
@@ -352,56 +223,29 @@ set_speaker_light_locked(struct light_device_t* dev,
             break;
     }
 
-    colorRGB = state->color;
-
-    ALOGD("set_speaker_light_locked mode %d, colorRGB=%08X, onMS=%d, offMS=%d\n",
-            state->flashMode, colorRGB, onMS, offMS);
-
-    red = (colorRGB >> 16) & 0xFF;
-    green = (colorRGB >> 8) & 0xFF;
-    blue = colorRGB & 0xFF;
-
     blink = onMS > 0 && offMS > 0;
+    led_color = get_speaker_led_color(state);
 
-    if (blink) {
-        // Driver doesn't permit us to set individual duty cycles, so only
-        // pick pure colors at max brightness when blinking.
-        nearest = nearest_color(red, green, blue);
+    ALOGD("set_speaker_light_locked mode %d, color=%08X, led=%d, blink=%d\n",
+            state->flashMode, state->color, led_color, blink);
 
-        red = nearest->r;
-        green = nearest->g;
-        blue = nearest->b;
+    // The hardware only supports separate red/green LEDs with boolean blink.
+    // Brightness values other than 0/255 cause unstable flicker.
+    reset_speaker_light_locked();
 
-        // Make sure the values are between 1 and 7 seconds
-        if (onMS < 1000)
-            onMS = 1000;
-        else if (onMS > 7000)
-            onMS = 7000;
-
-        if (offMS < 1000)
-            offMS = 1000;
-        else if (offMS > 7000)
-            offMS = 7000;
-
-        // ramp up, lit, ramp down, unlit. in seconds.
-        sprintf(breath_pattern,"1 %d 1 %d",(int)(onMS/1000),(int)(offMS/1000));
-
-    } else {
-        blink = 0;
-        sprintf(breath_pattern,"1 2 1 2");
+    switch (led_color) {
+        case SPEAKER_LED_RED:
+            write_int(RED_LED_FILE, 255);
+            write_optional_int(RED_BLINK_FILE, blink ? 1 : 0);
+            break;
+        case SPEAKER_LED_GREEN:
+            write_int(GREEN_LED_FILE, 255);
+            write_optional_int(GREEN_BLINK_FILE, blink ? 1 : 0);
+            break;
+        case SPEAKER_LED_OFF:
+        default:
+            break;
     }
-
-    // Do everything with the lights out, then turn up the brightness
-    write_str(RED_BREATH_FILE, breath_pattern);
-    write_int(RED_BLINK_FILE, (blink && red ? 1 : 0));
-    write_str(GREEN_BREATH_FILE, breath_pattern);
-    write_int(GREEN_BLINK_FILE, (blink && green ? 1 : 0));
-    write_str(BLUE_BREATH_FILE, breath_pattern);
-    write_int(BLUE_BLINK_FILE, (blink && blue ? 1 : 0));
-
-    write_int(RED_LED_FILE, red);
-    write_int(GREEN_LED_FILE, green);
-    write_int(BLUE_LED_FILE, blue);
 
     return 0;
 }
