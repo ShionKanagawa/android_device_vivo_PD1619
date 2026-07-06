@@ -64,6 +64,25 @@ PD1619 device tree bring-up, so the project context survives future sessions.
     stock kernel, stock ramdisk, and stock offsets succeeds, but does not match
     the stock boot hash because the AVBv1 signing/footer data is not reproduced.
 
+## Magisk 24+ Boot Quirk
+
+- PD1619 boots Magisk 23.0 and a Magisk 24.0 image patched with the 32-bit
+  `magiskinit`, but bootloops before boot animation when Magisk 24.0 uses the
+  arm64 `magiskinit` as ramdisk `/init`.
+- This is an early PID 1 / ramdisk-stage issue only. The Android userspace and
+  Magisk runtime can still use the 64-bit `magisk64` binary after init has
+  handed off to the normal system.
+- Treat the working recipe as: 32-bit early init/tooling, 64-bit runtime.
+- Do not use official Magisk 24+ direct install on PD1619 unless the installer
+  is patched to select `lib/armeabi-v7a/libmagiskinit.so` for `/init`.
+- Host-side helper:
+  `tools/patch-magisk-boot-pd1619.sh <Magisk.apk> <boot.img> [out.img]`.
+  It extracts 32-bit `magiskinit`, detects both old Magisk APK layouts
+  (`libmagisk32`/`libmagisk64`) and newer layouts (`libmagisk` plus
+  `init-ld`/`stub.apk`), removes DT fstab verity flags, applies the
+  `skip_initramfs` to `want_initramfs` kernel patch, and repacks a flashable
+  boot image.
+
 ## Bring-Up Philosophy
 
 - Practical bring-up style: "works first"; full OSS purity is not required.
@@ -169,6 +188,29 @@ Important HIDL services observed through `lshal` and init scripts include:
 - SoundTrigger 2.0.
 - Tether offload config/control 1.0.
 - Vibrator 1.0.
+
+GNSS note: PD1619 uses the stock `vendor.qti.gnss@1.0-service` plus
+`vendor.qti.gnss@1.0-impl.so` vendor extension path, but that stock service
+still depends on the stock passthrough
+`android.hardware.gnss@1.0-impl-qti.so` underneath it for
+`android.hardware.gnss@1.0::IGnss/default`. A partial swap is worse than either
+side alone: if only the source-built `android.hardware.gnss@1.0-impl-qti` is
+present, the service cannot expose `vendor.qti.gnss@1.0::ILocHidlGnss`; if only
+`vendor.qti.gnss@1.0-impl.so` is present, the service fails with
+`Could not get passthrough implementation for android.hardware.gnss@1.0::IGnss/default`
+and `system_server` eventually aborts with
+`Abort due to IGNSS hidl service failure, restarting system server`. Ship the
+full stock GNSS userspace stack instead.
+
+Alarm/factory note: the stock `vendor.qti.hardware.alarm@1.0-service` and
+`vendor.qti.hardware.factory@1.0-service` are also passthrough-backed. Their
+manifest entries alone are not enough; both services additionally require the
+stock `vendor.qti.hardware.alarm@1.0-impl.so` and
+`vendor.qti.hardware.factory@1.0-impl.so` under both `vendor/lib/hw` and
+`vendor/lib64/hw`. If those impl blobs are missing, logs show
+`Could not get passthrough implementation for vendor.qti.hardware.alarm@1.0::IAlarm/default`
+and the corresponding factory error. Once the four impl blobs are present, both
+HALs register normally through `lshal`.
 - Wi-Fi 1.0/1.1 and supplicant 1.0.
 - QTI IMS, UCE, radio, perf, qteeconnector, alarm, factory, and Wi-Fi keystore
   HALs.
@@ -454,14 +496,17 @@ Important HIDL services observed through `lshal` and init scripts include:
   `sys.boot_completed=1`, `dev.bootcomplete=1`, surfaceflinger/zygotes running,
   bootanimation stopped, and SetupWizard resumed. ADB screencap shows the
   Lineage SetupWizard, so the SF/HWC/GPU path is rendering. The physical panel
-  was only extremely dim; manually setting
-  `/sys/class/leds/lcd-backlight/brightness=255`,
-  `/sys/class/leds/lm3697-backlight/brightness=255`, and
-  `/sys/class/leds/wled/brightness=4095` made the panel bright. PD1619 now
-  fans out Android lights HAL backlight writes to `lcd-backlight`,
-  `lm3697-backlight`, and scaled `wled`, and init grants system write access to
-  the extra nodes. Recovery was also still pointing at the old dim path, so
-  `TARGET_RECOVERY_BACKLIGHT_PATH` is now `/sys/class/leds/wled`.
+  was only extremely dim. Later isolated sysfs testing showed
+  `/sys/class/leds/lm3697-backlight/brightness` is the only normal runtime
+  dimming control: sweeping it visibly changes panel brightness, while sweeping
+  `/sys/class/leds/lcd-backlight/brightness` has no visible effect on PD1619.
+  Keep `/sys/class/leds/wled/brightness` high as a helper/supply path, but do
+  Android lights HAL runtime dimming through `lm3697-backlight`. The helper
+  script `tools/backlight-probe.sh` records the repeatable adb tests. Because
+  bootanimation starts before Android's display power stack has applied the
+  user brightness through lights HAL, init also boosts `wled` and
+  `lm3697-backlight` when `init.svc.bootanim=running`; normal runtime brightness
+  is handed back to lights HAL after system_server is up.
 - The same 20260704-094655 log reduced the obvious missing-library noise to
   `libadsprpc.so` for `adsprpcd` and
   `libmmcamera2_stats_algorithm.so` for 32-bit `mm-qcamera-daemon`, plus one
@@ -582,6 +627,31 @@ Important HIDL services observed through `lshal` and init scripts include:
   audio HAL and sound-trigger HAL see the same control names as the stock
   mixer paths. The same targeted host build confirms these XML files install to
   the expected system/vendor paths.
+- Call-audio debugging showed Telecom enters `MODE_IN_CALL` and QTI sends
+  `vsid/call_state` to audioserver, but all Voice/VoLTE tinymix routes remain
+  off. Stock PD1619 keeps `audio_platform_info*.xml` under `/system/etc` and
+  ships `/system/etc/acdbdata`, so the system-side platform XMLs and full stock
+  ACDB calibration set are extracted for the primary audio HAL. A live hot-push
+  of these files plus the stock-aligned audio properties restored in-call audio
+  on a VoLTE 10086 test call.
+- Hi-Fi DAC bring-up notes:
+  the prebuilt kernel already probes the ES9018 path at I2C `1-0048` and exposes
+  `/sys/kernel/debug/es9018/reg`, `hifi-codec-pd1619`, and the
+  `VIVO_HiFi_Playback` mixer control. Stock sets
+  `ro.config.hifi_config_state=2`, `persist.vivo.phone.hifi=Have_hifi`, and
+  `ro.config.hifi_always_on=no`. A live `AudioSystem.setParameters()` test with
+  `enable_hifi=1` and `force_enable_hifi=1` returned success, switched tinymix
+  to `VIVO_HiFi_Playback On`, `HiFi Mute None`, `QUIN_MI2S Bit Format S24_LE`,
+  and produced audible headphone output through the Hi-Fi path. The stock
+  `AudioEffect.apk` is therefore UI/whitelist glue; the useful integration point
+  is a small settings/service wrapper around these HAL parameters.
+- Hi-Fi UI integration:
+  PD1619 exposes Hi-Fi as a direct Sound settings switch instead of a nested
+  device-settings page. Settings persists `pd1619_hifi_enabled` and applies
+  `enable_hifi` plus `force_enable_hifi` immediately; the tiny `PD1619Parts`
+  priv-app only restores the saved HAL parameters after boot. HOME-touch
+  remapping and virtual-key haptics should stay fixed device behavior rather
+  than user-facing feature switches.
 - Camera follow-up after WLAN/audio/baseband booted:
   logs captured under `logs/20260704-124156-camera-followup/` showed the camera
   provider and `mm-qcamera-daemon` running, but `dumpsys media.camera` reported
@@ -695,4 +765,74 @@ Important HIDL services observed through `lshal` and init scripts include:
   rc was renamed to
   `android.hardware.biometrics.fingerprint@2.0-service-custom.rc` to avoid
   colliding with Lineage's generic 2.0 fingerprint service rc target. The
-  current `proprietary-files.txt` has 949 real entries.
+  current `proprietary-files.txt` has 1041 real entries.
+- Sensor/auto-rotate follow-up:
+  auto-rotate was not a framework setting issue. Live adb showed
+  `dumpsys sensorservice` returning `No Sensors on the device`, while
+  `dumpsys window policy` had auto-rotation support enabled but no selected
+  orientation sensor. The sensor1 path itself was alive: the HAL logged
+  `SMGR version=23`, then `processAllSensorInfoResp: SensorInfo_len: 0`.
+  That means `sensors.qcom` and ADSP/SMGR can talk, but the registry defaults
+  did not produce any physical sensor entries. The tree now replaces the LeEco
+  generic `sensor_def_qcomdev.conf` with stock PD1619's copy, installs it to
+  both `/system/etc/sensors` and `/system/vendor/etc/sensors`, restores stock
+  `init.qcom.sensors.sh`, makes the `sensors` daemon disabled like stock, and
+  lets `sensor-sh` prepare `/persist/sensors/registry/registry` before starting
+  it. The source-built `android.hardware.sensors@1.0-{impl,service}` pair is
+  no longer requested; stock PD1619 sensors HIDL blobs and sensor calibrate
+  libraries are extracted instead. If sensors are still empty after a clean
+  flash, delete `/persist/sensors/sns.reg` once and recheck SMGR registry
+  responses.
+- IMS/call bring-up follow-up:
+  mobile data and SMS worked, but outgoing calls disconnected immediately while
+  the framework logged `ImsManager: getServiceProxy: b is null` and
+  `ImsException: Binder is not active!(106)`. Native IMS daemons were running,
+  but `cmd package query-services -a android.telephony.ims.ImsService` returned
+  no services. Stock PD1619 provides the missing framework side as
+  `/system/app/ims/ims.apk`, package `org.codeaurora.ims`, shared UID
+  `android.uid.phone`, and service `.ImsService` with
+  `android.permission.BIND_IMS_SERVICE`. Because the stock APK is signed with
+  BBK's platform key and our phone stack is signed with the Lineage platform
+  key, it must be extracted as a prebuilt APK module and re-signed by the build
+  system, not copied raw with `PRODUCT_COPY_FILES`. The stock APK is also odexed
+  and has no `classes.dex`, so `extract-files.sh` must deodex it from
+  `app/ims/oat/arm64/ims.vdex`. The tree now extracts `ims.apk`, its required
+  `com.qti.vzw.ims.internal` shared library jar/xml, IMS JNI/video libraries,
+  `imsrcsd`, and the stock `qcril.db`; `init.target.rc` also starts the
+  correctly named `vendor.imsrcsservice`.
+- The first `org.codeaurora.ims` bring-up build registered
+  `android.telephony.ims.ImsService`, but `com.android.phone` crashed on
+  `VivoInfoImsExceptionFactory.addQueueIMSChanged()`. The real missing class is
+  not in IMS: vivo added `com.android.internal.telephony.CollectonUtils`
+  (spelled that way) to stock `boot-telephony-common.vdex`. That class only
+  backs vivo IMS exception/telemetry collection, so importing stock
+  `telephony-common.jar` would be much riskier than the feature is worth.
+  `extract-files.sh` now runs `tools/patch-vivo-ims-apk.sh` after extraction to
+  decompile `ims.apk`, replace `VivoInfoImsExceptionFactory` public entry points
+  with no-ops, remove stale APK signatures, and let the build re-sign the APK
+  with the Lineage platform key.
+- The patched stock vivo IMS stack still left Android's `ImsPhone` out of
+  service even though the radio side reported IMS registration. Logs showed the
+  dial path falling back to CS (`BIND_CS` / `RIL_REQUEST_DIAL`) and the modem
+  rejecting it with `INVALID_MODEM_STATE`; `ImsPhoneCallTracker` kept VoLTE
+  disabled because the expected O-era registration/capability callbacks never
+  reached the framework. To test a coherent O stack, the tree now kanges the
+  LeEco s2 / SRT Phone Oreo IMS and QTI telephony addon set from
+  `vendor/leeco/s2`, commit `420e5505e7ffebf141f357ff45d54bdc843d21fa`
+  (`s2: Update blobs to oreo`). This includes `ims.apk`, `imssettings`,
+  `uceShimService`, `QtiTelephonyService`, `qcrilmsgtunnel`,
+  `qcrilhook.jar`, `qti-telephony-common.jar`,
+  `QtiTelephonyServicelibrary.jar`, `qti-vzw-ims-internal.jar`,
+  `com.qualcomm.qti.imscmservice@1.0-java.jar`, IMS/RTP/UCE native blobs,
+  and `vendor.qti.hardware.radio.ims/qcrilhook@1.0` HIDL blobs. Core PD1619
+  RIL, netmgr, qcril database, and vivo-only blobs are still kept unless the
+  next test shows the wider radio stack must also be swapped.
+- `tools/patch-vivo-ims-apk.sh` is now tolerant of both APK families: for vivo
+  IMS it no-ops the vivo telemetry hook, while for SRT/LeEco IMS that class is
+  absent and the script only applies the PD1619 slot-0-active
+  `ImsSubController` patch. The pinned `app/ims/ims.apk` hash in
+  `proprietary-files.txt` is the patched SRT/LeEco APK, not the raw source blob.
+- `qcrilmsgtunnel.apk` requests shared library
+  `android.hidl.manager@1.0-java`, while the Android O source jar is named
+  `android.hidl.manager-V1.0-java.jar`; `qti_libpermissions.xml` deliberately
+  exposes the former name while pointing at the latter file.
