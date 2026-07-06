@@ -2,9 +2,16 @@ binder_call(hal_fingerprint_default, servicemanager);
 binder_call(hal_fingerprint_default, keystore);
 binder_call(hal_fingerprint_default, goodix);
 
+hal_client_domain(hal_fingerprint_default, hal_perf)
+
 allow hal_fingerprint_default keystore_service:service_manager { find };
 allow hal_fingerprint_default goodix_service:service_manager { find };
 
 allow hal_fingerprint_default keystore:keystore_key { add_auth };
+allow hal_fingerprint_default sysfs_goodix:file write;
+allow hal_fingerprint_default tee_device:chr_file ioctl;
+
+allow hal_fingerprint_default property_socket:sock_file write;
+allow hal_fingerprint_default init:unix_stream_socket connectto;
 
 add_service(hal_fingerprint_default, fingerprintd_custom_service);

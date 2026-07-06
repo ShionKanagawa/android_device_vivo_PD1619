@@ -1,3 +1,13 @@
 allow hal_camera_default camera_data_file:sock_file { write };
 allow hal_camera_default sysfs:file write;
 allow hal_camera_default sysfs_leds:dir search;
+
+# Stock camera blobs probe legacy emulated-storage paths while resolving media
+# locations. They only need directory traversal here; file I/O remains outside
+# the HAL domain.
+allow hal_camera_default media_rw_data_file:dir { open read search };
+allow hal_camera_default mnt_user_file:dir search;
+allow hal_camera_default mnt_user_file:lnk_file read;
+allow hal_camera_default sdcardfs:dir search;
+allow hal_camera_default storage_file:dir search;
+allow hal_camera_default storage_file:lnk_file read;
