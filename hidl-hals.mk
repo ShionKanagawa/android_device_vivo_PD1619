@@ -61,9 +61,10 @@ PRODUCT_PACKAGES += \
     android.hardware.biometrics.fingerprint@2.0-service-custom
 
 # GNSS
-PRODUCT_PACKAGES += \
-    android.hardware.gnss@1.0-impl \
-    android.hardware.gnss@1.0-impl-qti
+# Use the stock PD1619 GNSS stack from proprietary-files.txt. The stock
+# `vendor.qti.gnss@1.0-service` still expects the stock passthrough
+# `android.hardware.gnss@1.0-impl-qti.so` underneath it, plus
+# `vendor.qti.gnss@1.0-impl.so` for vivo's vendor extension service.
 
 # Health HAL
 PRODUCT_PACKAGES += \
