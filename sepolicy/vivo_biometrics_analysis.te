@@ -1,0 +1,10 @@
+type vivo_biometrics_analysis, domain;
+type vivo_biometrics_analysis_exec, exec_type, file_type;
+
+init_daemon_domain(vivo_biometrics_analysis)
+hwbinder_use(vivo_biometrics_analysis)
+vndbinder_use(vivo_biometrics_analysis)
+get_prop(vivo_biometrics_analysis, hwservicemanager_prop)
+add_hwservice(vivo_biometrics_analysis, vivo_biometrics_analysis_hwservice)
+
+allow hal_fingerprint_default vivo_biometrics_analysis_hwservice:hwservice_manager find;

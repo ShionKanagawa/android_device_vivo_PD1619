@@ -1,0 +1,4 @@
+type vivo_bbkts_hwservice, hwservice_manager_type;
+type vivo_biometrics_analysis_hwservice, hwservice_manager_type;
+type vivo_light_hwservice, hwservice_manager_type;
+type vivo_wifiap_hwservice, hwservice_manager_type;

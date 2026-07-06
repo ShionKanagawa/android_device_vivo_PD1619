@@ -1,3 +1,4 @@
 genfscon debugfs /rmt_storage/rmts u:object_r:qti_debugfs:s0
 genfscon sysfs /devices/soc.0/78b7000.spi/spi_master/spi3/spi3.0/irq u:object_r:sysfs_goodix:s0
+genfscon sysfs /devices/soc.0/78b7000.spi/spi_master/spi3/spi3.0/finger_touch_key u:object_r:sysfs_goodix:s0
 genfscon sysfs /devices/soc.0/78b7000.spi/spi_master/spi3/spi3.0/wakeup_enable u:object_r:sysfs_goodix:s0

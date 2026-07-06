@@ -1,0 +1,7 @@
+type vivo_wifiap, domain;
+type vivo_wifiap_exec, exec_type, file_type;
+
+init_daemon_domain(vivo_wifiap)
+hwbinder_use(vivo_wifiap)
+get_prop(vivo_wifiap, hwservicemanager_prop)
+add_hwservice(vivo_wifiap, vivo_wifiap_hwservice)

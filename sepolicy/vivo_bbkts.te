@@ -1,0 +1,7 @@
+type vivo_bbkts, domain;
+type vivo_bbkts_exec, exec_type, file_type;
+
+init_daemon_domain(vivo_bbkts)
+hwbinder_use(vivo_bbkts)
+get_prop(vivo_bbkts, hwservicemanager_prop)
+add_hwservice(vivo_bbkts, vivo_bbkts_hwservice)

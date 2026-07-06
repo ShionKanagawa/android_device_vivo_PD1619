@@ -1,0 +1,5 @@
+vendor.vivo.hardware.bbkts::IBbkts                          u:object_r:vivo_bbkts_hwservice:s0
+vendor.vivo.hardware.biometrics.analysis::IAnalysis          u:object_r:vivo_biometrics_analysis_hwservice:s0
+vendor.vivo.hardware.camera.provider::IVivoCameraProvider    u:object_r:hal_camera_hwservice:s0
+vendor.vivo.hardware.light::ILight                           u:object_r:vivo_light_hwservice:s0
+vendor.vivo.hardware.wifiap::IWifiAp                         u:object_r:vivo_wifiap_hwservice:s0

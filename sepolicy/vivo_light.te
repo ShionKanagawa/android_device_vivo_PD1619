@@ -1,0 +1,7 @@
+type vivo_light, domain;
+type vivo_light_exec, exec_type, file_type;
+
+init_daemon_domain(vivo_light)
+hwbinder_use(vivo_light)
+get_prop(vivo_light, hwservicemanager_prop)
+add_hwservice(vivo_light, vivo_light_hwservice)
