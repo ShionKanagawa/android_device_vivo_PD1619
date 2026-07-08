@@ -44,8 +44,6 @@ vendor/bin/irsc_util
 
 # HIDL/vendor services not provided by this tree
 vendor/bin/hw/android.hardware.bluetooth@1.0-service-qti
-vendor/bin/hw/android.hardware.gatekeeper@1.0-service
-vendor/bin/hw/android.hardware.keymaster@3.0-service
 vendor/bin/hw/android.hardware.sensors@1.0-service
 vendor/bin/hw/rild
 vendor/bin/hw/vendor.qti.gnss@1.0-service|049201d8e22064b87eb52df208d8cda7066d140a
@@ -59,8 +57,6 @@ vendor/bin/hw/vendor.vivo.hardware.light@1.0-service
 
 # Init fragments for proprietary services
 vendor/etc/init/android.hardware.bluetooth@1.0-service-qti.rc
-vendor/etc/init/android.hardware.gatekeeper@1.0-service.rc
-vendor/etc/init/android.hardware.keymaster@3.0-service.rc
 vendor/etc/init/android.hardware.sensors@1.0-service.rc
 vendor/etc/init/init.vivo.fingerprint.rc
 vendor/etc/init/rild.rc
@@ -270,15 +266,12 @@ vendor/lib64/libdrmfs.so
 vendor/lib64/libdrmtime.so
 vendor/lib64/libadsprpc.so
 vendor/lib64/libadsp_default_listener.so
-vendor/lib64/libkeymasterprovision.so
 vendor/lib64/libssd.so
 vendor/lib64/libtzdrmgenprov.so
 vendor/lib64/libSecureUILib.so
 vendor/lib64/libsecureui.so
 vendor/lib64/libsecureui_svcsock.so
 vendor/lib64/librpmb.so
-vendor/lib64/hw/android.hardware.gatekeeper@1.0-impl.so
-vendor/lib64/hw/android.hardware.keymaster@3.0-impl.so
 vendor/lib64/hw/gatekeeper.msm8952.so
 
 # Audio / sensor / power proprietary pieces
@@ -516,15 +509,6 @@ etc/firmware/venus.b03
 etc/firmware/venus.b04
 etc/firmware/venus.mbn
 etc/firmware/venus.mdt
-etc/firmware/vivokeymaster.b00
-etc/firmware/vivokeymaster.b01
-etc/firmware/vivokeymaster.b02
-etc/firmware/vivokeymaster.b03
-etc/firmware/vivokeymaster.b04
-etc/firmware/vivokeymaster.b05
-etc/firmware/vivokeymaster.b06
-etc/firmware/vivokeymaster.mbn
-etc/firmware/vivokeymaster.mdt
 etc/firmware/wlan/prima/WCNSS_cfg.dat
 
 # Media configuration

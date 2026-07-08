@@ -52,9 +52,9 @@ PRODUCT_PACKAGES += \
     android.hardware.drm@1.0-service
 
 # Gatekeeper
-# Use the stock PD1619 service/impl pair from proprietary-files.txt. The
-# generic service opens a legacy gatekeeper HAL that must match vivo's QSEE
-# userspace.
+PRODUCT_PACKAGES += \
+    android.hardware.gatekeeper@1.0-impl \
+    android.hardware.gatekeeper@1.0-service
 
 # Fingerprint
 PRODUCT_PACKAGES += \
@@ -73,7 +73,9 @@ PRODUCT_PACKAGES += \
     android.hardware.health@1.0
 
 # Keymaster
-# Use the stock PD1619 service/impl pair alongside the stock TrustZone blobs.
+PRODUCT_PACKAGES += \
+    android.hardware.keymaster@3.0-impl \
+    android.hardware.keymaster@3.0-service
 
 # Light
 PRODUCT_PACKAGES += \
