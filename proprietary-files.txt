@@ -14,8 +14,8 @@ vendor/bin/imsdatadaemon|42a8bd586d98266d6910c8bb584cb473898eb6b0
 vendor/bin/imsqmidaemon|853fa8bbd402ecc2e9d060e9d21895f4e1460457
 vendor/bin/imsrcsd|4f52c49eaf5b01d5ce777551b81c84ba6b9df0c9
 vendor/bin/ipacm-diag
-vendor/bin/loc_launcher
-vendor/bin/lowi-server
+vendor/bin/loc_launcher|23a4470552c0c418662a7d91fa7f593bee767459
+vendor/bin/lowi-server|f83f6ab9b978c618c87d2b5c66854533d0e3a66f
 vendor/bin/mdtpd
 vendor/bin/mm-qcamera-daemon
 vendor/bin/mm-pp-daemon
@@ -28,12 +28,11 @@ vendor/bin/qseecomd
 vendor/bin/qti
 vendor/bin/rmt_storage
 vendor/bin/sensors.qcom
-vendor/bin/slim_daemon
 vendor/bin/thermal-engine
 vendor/bin/time_daemon
 vendor/bin/tftp_server
 vendor/bin/wcnss_filter
-vendor/bin/xtra-daemon
+vendor/bin/xtra-daemon|f4fdd2d7fc56472066b05899340eb19ff67d54b4
 vendor/bin/xtwifi-client
 vendor/bin/xtwifi-inet-agent
 
@@ -49,7 +48,7 @@ vendor/bin/hw/android.hardware.gatekeeper@1.0-service
 vendor/bin/hw/android.hardware.keymaster@3.0-service
 vendor/bin/hw/android.hardware.sensors@1.0-service
 vendor/bin/hw/rild
-vendor/bin/hw/vendor.qti.gnss@1.0-service
+vendor/bin/hw/vendor.qti.gnss@1.0-service|049201d8e22064b87eb52df208d8cda7066d140a
 vendor/bin/hw/vendor.qti.hardware.alarm@1.0-service
 vendor/bin/hw/vendor.qti.hardware.factory@1.0-service
 vendor/bin/hw/vendor.qti.hardware.perf@1.0-service
@@ -65,7 +64,7 @@ vendor/etc/init/android.hardware.keymaster@3.0-service.rc
 vendor/etc/init/android.hardware.sensors@1.0-service.rc
 vendor/etc/init/init.vivo.fingerprint.rc
 vendor/etc/init/rild.rc
-vendor/etc/init/vendor.qti.gnss@1.0-service.rc
+vendor/etc/init/vendor.qti.gnss@1.0-service.rc|98655e2adc2158a052b0ecf06b065535f0a2aac7
 vendor/etc/init/vendor.qti.hardware.alarm@1.0-service.rc
 vendor/etc/init/vendor.qti.hardware.factory@1.0-service.rc
 vendor/etc/init/vendor.qti.hardware.perf@1.0-service.rc
@@ -217,11 +216,8 @@ vendor/lib64/lib-imsxml.so|36c0e499c7a899b8f9961b6e1f94e206aafc2e1f
 vendor/lib64/lib-uceservice.so|a2eaa952b33f5523d43f8ce7c0cfacb1c4ed7055
 
 # QTI HIDL support libraries
-lib/vendor.qti.gnss@1.0.so
 lib/vendor.qti.hardware.qteeconnector@1.0.so
-lib64/vendor.qti.gnss@1.0.so
 lib64/vendor.qti.hardware.qteeconnector@1.0.so
-vendor/lib/vendor.qti.gnss@1.0_vendor.so
 vendor/lib/vendor.qti.hardware.alarm@1.0.so
 vendor/lib/vendor.qti.hardware.data.latency@1.0_vendor.so
 vendor/lib/vendor.qti.hardware.fm@1.0_vendor.so
@@ -233,15 +229,10 @@ vendor/lib/vendor.qti.hardware.radio.ims@1.0_vendor.so|c349464448cb7f86b0cb6ebd7
 vendor/lib/vendor.qti.hardware.radio.qcrilhook@1.0_vendor.so|6ff27983339b63f31566366773c657515b775918
 vendor/lib/vendor.qti.hardware.radio.qtiradio@1.0_vendor.so
 vendor/lib/vendor.qti.imsrtpservice@1.0_vendor.so|2f22504b693926a05e3f85733c52e2d8ab198806
-vendor/lib/hw/android.hardware.gnss@1.0-impl-qti.so
 vendor/lib/hw/vendor.qti.hardware.alarm@1.0-impl.so
 vendor/lib/hw/vendor.qti.hardware.factory@1.0-impl.so
 vendor/lib/hw/vendor.qti.hardware.qteeconnector@1.0-impl.so
-vendor/lib/hw/vendor.qti.gnss@1.0-impl.so
-vendor/lib/libflp.so
-vendor/lib/libizat_client_api.so
-vendor/lib/libxtadapter.so
-vendor/lib64/vendor.qti.gnss@1.0_vendor.so
+vendor/lib64/vendor.qti.gnss@1.0.so|90b465adc4542f16fbdd935d0592df73d778909b
 vendor/lib64/vendor.qti.hardware.alarm@1.0.so
 vendor/lib64/vendor.qti.hardware.data.latency@1.0_vendor.so
 vendor/lib64/vendor.qti.hardware.fm@1.0_vendor.so
@@ -253,14 +244,14 @@ vendor/lib64/vendor.qti.hardware.radio.ims@1.0_vendor.so|cf37d696dca57868b66278d
 vendor/lib64/vendor.qti.hardware.radio.qcrilhook@1.0_vendor.so|649573bfd3969b1eb64c968ae6dada5c15133483
 vendor/lib64/vendor.qti.hardware.radio.qtiradio@1.0_vendor.so
 vendor/lib64/vendor.qti.imsrtpservice@1.0_vendor.so|aea829f375debc5b55b3826602f69d3e44ae1698
-vendor/lib64/hw/android.hardware.gnss@1.0-impl-qti.so
 vendor/lib64/hw/vendor.qti.hardware.alarm@1.0-impl.so
 vendor/lib64/hw/vendor.qti.hardware.factory@1.0-impl.so
 vendor/lib64/hw/vendor.qti.hardware.qteeconnector@1.0-impl.so
-vendor/lib64/hw/vendor.qti.gnss@1.0-impl.so
-vendor/lib64/libflp.so
-vendor/lib64/libizat_client_api.so
-vendor/lib64/libxtadapter.so
+vendor/lib64/hw/vendor.qti.gnss@1.0-impl.so|86406bdc49ee29ffc49f0c92be4793071874f3bc
+vendor/lib64/libflp.so|24f95f8b568c393d8b51d7376a62b8e9151f9b9d
+vendor/lib64/libgeofence.so|c7250877898a17f4bfdc244f613dd1e1a9397cb6
+vendor/lib64/libizat_client_api.so|853e4ccd91718edac986f755fc9800603d3a284a
+vendor/lib64/libxtadapter.so|d404e8c5c6e14a556926ba772ca99aa51cbd6a36
 
 # TrustZone / DRM
 vendor/lib/libQSEEComAPI.so
@@ -889,25 +880,19 @@ vendor/lib/libflash_pmic.so
 
 # Location / Wi-Fi support
 vendor/lib/libloc_api_v02.so
-vendor/lib/libloc_core.so
 vendor/lib/libloc_ds_api.so
 vendor/lib/libloc_externalDr.so
-vendor/lib/libloc_pla.so
-vendor/lib/liblocation_api.so
 vendor/lib/liblocationservice.so
 vendor/lib/liblocationservice_glue.so
 vendor/lib/liblowi_wifihal.so
 vendor/lib/libxtwifi_ulp_adaptor.so
-vendor/lib64/libloc_api_v02.so
-vendor/lib64/libloc_core.so
-vendor/lib64/libloc_ds_api.so
+vendor/lib64/libloc_api_v02.so|e3dafec13d58ad2c1d7dfe5aad14371d5f47e295
+vendor/lib64/libloc_ds_api.so|158c9d75eb01b7ae55877ee9e9c9046ad3cafea8
 vendor/lib64/libloc_externalDr.so
-vendor/lib64/libloc_pla.so
-vendor/lib64/liblocation_api.so
-vendor/lib64/liblocationservice.so
-vendor/lib64/liblocationservice_glue.so
+vendor/lib64/liblocationservice.so|f9e6a94c260abafa857d2bcc96f23adef56527e7
+vendor/lib64/liblocationservice_glue.so|d423896f97fa4a1c3f9fecda11df97baf3fa0969
 vendor/lib64/liblowi_wifihal.so
-vendor/lib64/libxtwifi_ulp_adaptor.so
+vendor/lib64/libxtwifi_ulp_adaptor.so|58b20fbdbb500add11784acce0808c7198c96c34
 
 # Direct dependencies for stock proprietary blobs
 lib/libmm-qcamera.so
@@ -969,12 +954,9 @@ vendor/lib/libdsutils.so
 vendor/lib/libencodejpegnativehal.so
 vendor/lib/libfastcvopt.so
 vendor/lib/libgdtap.so
-vendor/lib/libgnsspps.so
-vendor/lib/libgps.utils.so
 vendor/lib/libidl.so
 vendor/lib/libizat_core.so
 vendor/lib/liblbs_core.so
-vendor/lib/libloc_stub.so
 vendor/lib/liblowi_client.so
 vendor/lib/liblqe.so
 vendor/lib/libmdmdetect.so
@@ -1030,18 +1012,15 @@ vendor/lib64/libbtnv.so
 vendor/lib64/libcne.so
 vendor/lib64/libcneapiclient.so
 vendor/lib64/libconfigdb.so
-vendor/lib64/libdataitems.so
+vendor/lib64/libdataitems.so|2ae06cb5a687fdf2c5a533a17d9529a1984b2803
 vendor/lib64/libdpmqmihal.so
 vendor/lib64/libdsi_netctrl.so
 vendor/lib64/libdsutils.so
 vendor/lib64/libgdtap.so
-vendor/lib64/libgnsspps.so
-vendor/lib64/libgps.utils.so
 vendor/lib64/libidl.so
-vendor/lib64/libizat_core.so
-vendor/lib64/liblbs_core.so
-vendor/lib64/libloc_stub.so
-vendor/lib64/liblowi_client.so
+vendor/lib64/libizat_core.so|381f72f4c0030f88e5acaf6a3498d9036fb30215
+vendor/lib64/liblbs_core.so|2dcf1cfffcc3db13b06c90feec6d81a7a8f7d428
+vendor/lib64/liblowi_client.so|34f65f866c950733c72d5a4f0de00580d2ac3cf5
 vendor/lib64/liblqe.so
 vendor/lib64/libmdmdetect.so
 vendor/lib64/libmdtp.so
@@ -1059,7 +1038,7 @@ vendor/lib64/libsmemlog.so
 vendor/lib64/libsystem_health_mon.so
 vendor/lib64/libthermalioctl.so
 vendor/lib64/libtime_genoff.so
-vendor/lib64/libulp2.so
+vendor/lib64/libulp2.so|275cb2f94d8b59fe8bfd8a28a5c1c39994c4569c
 vendor/lib64/vendor.qti.hardware.radio.lpa@1.0_vendor.so
 vendor/lib64/vendor.qti.hardware.radio.uim@1.0_vendor.so
 vendor/lib64/vendor.qti.hardware.radio.uim_remote_client@1.0_vendor.so
