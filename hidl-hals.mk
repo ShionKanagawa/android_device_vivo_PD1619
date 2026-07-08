@@ -120,6 +120,5 @@ PRODUCT_PACKAGES += \
     android.hardware.vr@1.0-service
 
 # Wi-Fi
-# Use the stock PD1619 service and vendor extension library. The source-built
-# generic service can load the module now, but it cannot talk to this stock
-# driver through cld80211.
+PRODUCT_PACKAGES += \
+    android.hardware.wifi@1.0-service
