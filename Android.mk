@@ -127,13 +127,6 @@ $(IMS_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(IMS_SYMLINKS)
 
-WCNSS_CFG_INI := $(TARGET_OUT_VENDOR)/firmware/wlan/prima/WCNSS_qcom_cfg.ini
-$(WCNSS_CFG_INI): $(LOCAL_INSTALLED_MODULE)
-	@echo "WCNSS_qcom_cfg.ini firmware link: $@"
-	@mkdir -p $(dir $@)
-	@rm -rf $@
-	$(hide) ln -sf /data/misc/wifi/$(notdir $@) $@
-
 WCNSS_PERSIST_FIRMWARE := WCNSS_qcom_wlan_nv.bin WCNSS_wlan_dictionary.dat
 WCNSS_PERSIST_SYMLINKS := \
 	$(addprefix $(TARGET_OUT_ETC)/firmware/wlan/prima/,$(WCNSS_PERSIST_FIRMWARE)) \
@@ -159,7 +152,7 @@ $(WLAN_MODULE_COPY): $(WLAN_MODULE)
 	@rm -rf $@
 	$(hide) cp -f $< $@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_CFG_INI) $(WCNSS_PERSIST_SYMLINKS) $(WLAN_MAC) $(WLAN_MODULE_COPY)
+ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_PERSIST_SYMLINKS) $(WLAN_MAC) $(WLAN_MODULE_COPY)
 
 
 CMNLIB_IMAGES := cmnlib.b00 cmnlib.b01 cmnlib.b02 cmnlib.b03 cmnlib.mdt
