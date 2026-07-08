@@ -1,2 +1,2 @@
-get_prop(location, wcnss_prop);
+get_prop(location, pd1619_wcnss_prop);
 allow location sysfs:dir { r_dir_perms };

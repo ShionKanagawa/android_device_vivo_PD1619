@@ -1,6 +1,5 @@
 oem.device.imeicache               u:object_r:qcom_ims_prop:s0
-ro.wcnss.serialno                  u:object_r:wcnss_prop:s0
-persist.rmnet.mux          u:object_r:rmnet_mux_prop:s0
+ro.wcnss.serialno                  u:object_r:pd1619_wcnss_prop:s0
 serialno                   u:object_r:serialno_prop:s0
 sys.fp.image.coverage      u:object_r:sys_fp_prop:s0
 sys.fp.image.quality       u:object_r:sys_fp_prop:s0
