@@ -349,8 +349,18 @@ on post-fs-data
 
     # Sensor
     mkdir /persist/sensors 0775 system system
+    mkdir /persist/sensors/registry 0775 system system
+    mkdir /persist/sensors/registry/registry 0775 system system
+    chown system system /persist/sensors
+    chown system system /persist/sensors/sns.reg
+    chown system system /persist/sensors/sensors_list.txt
+    chown system system /persist/sensors/registry
+    chown system system /persist/sensors/registry/registry
+    chown system system /persist/sensors/registry/registry/sensors_registry
+    chown system system /persist/sensors/registry/sns_reg_config
+    chown system system /persist/sensors/registry/config
     chmod 664 /persist/sensors/sensors_settings
-    chown system root /persist/sensors/sensors_settings
+    chown system system /persist/sensors/sensors_settings
 
     #Create FM dir for patchdownloader
     mkdir /data/misc/fm 0770 system system
