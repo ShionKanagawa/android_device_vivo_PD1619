@@ -27,7 +27,7 @@ vendor/bin/qmuxd
 vendor/bin/qseecomd
 vendor/bin/qti
 vendor/bin/rmt_storage
-vendor/bin/sensors.qcom
+vendor/bin/sensors.qcom|501646682ff3dfc7896ef82d2c72b7a8249c8679
 vendor/bin/thermal-engine
 vendor/bin/time_daemon
 vendor/bin/tftp_server
@@ -39,12 +39,10 @@ vendor/bin/xtwifi-inet-agent
 # Daemons referenced by the stock PD1619 init scripts
 vendor/bin/ATFWD-daemon
 vendor/bin/btnvtool
-vendor/bin/init.qcom.sensors.sh
 vendor/bin/irsc_util
 
 # HIDL/vendor services not provided by this tree
 vendor/bin/hw/android.hardware.bluetooth@1.0-service-qti
-vendor/bin/hw/android.hardware.sensors@1.0-service
 vendor/bin/hw/rild
 vendor/bin/hw/vendor.qti.gnss@1.0-service|049201d8e22064b87eb52df208d8cda7066d140a
 vendor/bin/hw/vendor.qti.hardware.alarm@1.0-service
@@ -57,7 +55,6 @@ vendor/bin/hw/vendor.vivo.hardware.light@1.0-service
 
 # Init fragments for proprietary services
 vendor/etc/init/android.hardware.bluetooth@1.0-service-qti.rc
-vendor/etc/init/android.hardware.sensors@1.0-service.rc
 vendor/etc/init/init.vivo.fingerprint.rc
 vendor/etc/init/rild.rc
 vendor/etc/init/vendor.qti.gnss@1.0-service.rc|98655e2adc2158a052b0ecf06b065535f0a2aac7
@@ -325,13 +322,9 @@ lib64/soundfx/libqcomvisualizer.so
 lib64/soundfx/libqcomvoiceprocessing.so
 vendor/lib/hw/audio.r_submix.default.so
 vendor/lib/hw/audio.usb.default.so
-vendor/lib/hw/android.hardware.sensors@1.0-impl.so
-vendor/lib/hw/sensors.msm8952_64.so
 vendor/lib/hw/sound_trigger.primary.msm8952.so
 vendor/lib64/hw/audio.r_submix.default.so
 vendor/lib64/hw/audio.usb.default.so
-vendor/lib64/hw/android.hardware.sensors@1.0-impl.so
-vendor/lib64/hw/sensors.msm8952_64.so
 vendor/lib/soundfx/libqcbassboost.so
 vendor/lib/soundfx/libqcreverb.so
 vendor/lib/soundfx/libqcvirt.so
@@ -348,8 +341,8 @@ vendor/lib/libktv_qcom.so
 vendor/lib/libdisp-aba.so
 vendor/lib/libtinycompress_vendor.so
 vendor/lib/libhwdaphal.so
-vendor/lib/sensor_calibrate.so
-vendor/lib/libsensor_reg.so
+vendor/lib/sensor_calibrate.so|be6bd75fe0446ff196e14c4856cc94c30ec0f37e
+vendor/lib/libsensor_reg.so|22b7932a7f1fb305833123dfc0d384c26748f577
 vendor/lib/vendor.qti.hardware.sensorscalibrate@1.0.so
 vendor/lib/libthermalclient.so
 vendor/lib64/libacdb-fts.so
@@ -364,13 +357,11 @@ vendor/lib64/libmm-dspp-utils.so
 vendor/lib64/libmm-qdcm-diag.so
 vendor/lib64/libtinycompress_vendor.so
 vendor/lib64/libhwdaphal.so
-vendor/lib64/sensor_calibrate.so
-vendor/lib64/libsensor_reg.so
+vendor/lib64/sensor_calibrate.so|9b7a9a242407d95d6753d448f703db362385a90a
+vendor/lib64/libsensor_reg.so|4727b70d49ce64ab3544f8dffe0c0d9fb0a3c745
 vendor/lib64/vendor.qti.hardware.sensorscalibrate@1.0.so
 vendor/lib64/libthermalclient.so
 vendor/framework/vendor.qti.hardware.sensorscalibrate-V1.0-java.jar
-lib/libsensor_reg.so
-lib64/libsensor_reg.so
 
 # Graphics / Adreno proprietary stack
 vendor/lib/egl/eglSubDriverAndroid.so
@@ -960,7 +951,7 @@ vendor/lib/libqdp.so
 vendor/lib/libqti-perfd-client.so
 vendor/lib/libril-qc-ltedirectdisc.so
 vendor/lib/librmnetctl.so
-vendor/lib/libsensor1.so
+vendor/lib/libsensor1.so|e18a9fdf6d3ce0beed435995b72ba84a4a5f1912
 vendor/lib/libsettings.so
 vendor/lib/libsmemlog.so
 vendor/lib/libsystem_health_mon.so
@@ -1016,7 +1007,7 @@ vendor/lib64/libqdp.so
 vendor/lib64/libqti-perfd-client.so
 vendor/lib64/libril-qc-ltedirectdisc.so
 vendor/lib64/librmnetctl.so
-vendor/lib64/libsensor1.so
+vendor/lib64/libsensor1.so|db20a88e7fd1da32f1a7721573542b4f7bf94bd8
 vendor/lib64/libsettings.so
 vendor/lib64/libsmemlog.so
 vendor/lib64/libsystem_health_mon.so
@@ -1055,5 +1046,5 @@ vendor/lib64/libril.so
 vendor/lib64/librilutils.so
 
 # Logcat-missing vendor sensor plugins
-vendor/lib/sensors.ssc.so
-vendor/lib64/sensors.ssc.so
+vendor/lib/sensors.ssc.so|38879892ccd1edbe45c5c911ef631dd1347dfe60
+vendor/lib64/sensors.ssc.so|92e6bdda5bcde71c8ef8ddf83ca222d22860cccc
