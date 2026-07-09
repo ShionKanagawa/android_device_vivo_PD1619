@@ -646,12 +646,15 @@ HALs register normally through `lshal`.
   `AudioEffect.apk` is therefore UI/whitelist glue; the useful integration point
   is a small settings/service wrapper around these HAL parameters.
 - Hi-Fi UI integration:
-  PD1619 exposes Hi-Fi as a direct Sound settings switch instead of a nested
-  device-settings page. Settings persists `pd1619_hifi_enabled` and applies
-  `enable_hifi` plus `force_enable_hifi` immediately; the tiny `PD1619Parts`
-  priv-app only restores the saved HAL parameters after boot. HOME-touch
-  remapping and virtual-key haptics should stay fixed device behavior rather
-  than user-facing feature switches.
+  PD1619 now keeps device-specific toggles under a dedicated `Vivo Features`
+  entry in `Settings > System` so the implementation stays device-side. The
+  page currently exposes Hi-Fi DAC and fast charging; it reuses the existing
+  `pd1619_hifi_enabled` secure setting, applies `enable_hifi` plus
+  `force_enable_hifi` immediately, and lets `PD1619Parts` restore the saved
+  Hi-Fi state after boot. Disabling Hi-Fi also restarts `audioserver` so the
+  HAL actually drops back out of the external DAC path. HOME-touch remapping
+  and virtual-key haptics should stay fixed device behavior rather than
+  user-facing feature switches.
 - Camera follow-up after WLAN/audio/baseband booted:
   logs captured under `logs/20260704-124156-camera-followup/` showed the camera
   provider and `mm-qcamera-daemon` running, but `dumpsys media.camera` reported
@@ -766,6 +769,21 @@ HALs register normally through `lshal`.
   `android.hardware.biometrics.fingerprint@2.0-service-custom.rc` to avoid
   colliding with Lineage's generic 2.0 fingerprint service rc target. The
   current `proprietary-files.txt` has 1041 real entries.
+- Fingerprint persistence follow-up:
+  the reboot-loses-enrollment bug was not caused by the fingerprint HIDL
+  service failing to start. Live checks showed
+  `android.hardware.biometrics.fingerprint@2.1-service.PD1619` running,
+  `lshal` exposing `android.hardware.biometrics.fingerprint@2.1::IBiometricsFingerprint/default`,
+  and `dumpsys fingerprint` reporting one enrolled print. The real breakage was
+  in the custom `gdxbiometrics/BiometricsFingerprint.cpp`: its
+  `enumerate()` path always forced the old array-return pre-2.1 ABI, and its
+  `notify()` handler dropped `FINGERPRINT_TEMPLATE_ENUMERATING` entirely. On
+  FPC 2.1 this made boot-time cleanup misread hardware enumeration, log
+  `Removing dangling enrolled fingerprint` plus dozens of bogus unknown prints,
+  and then delete framework-side enrollment state. The fix is to call
+  `mDevice->enumerate(mDevice)` when `mDevice->common.version >= 2.1`, keep the
+  array-return shim only for older HALs, and forward
+  `FINGERPRINT_TEMPLATE_ENUMERATING` to the client callback.
 - Sensor/auto-rotate follow-up:
   auto-rotate was not a framework setting issue. Live adb showed
   `dumpsys sensorservice` returning `No Sensors on the device`, while
@@ -783,6 +801,65 @@ HALs register normally through `lshal`.
   libraries are extracted instead. If sensors are still empty after a clean
   flash, delete `/persist/sensors/sns.reg` once and recheck SMGR registry
   responses.
+- Android 9 sensor follow-up:
+  after the cleanup tree booted, sensors regressed to `No Sensors on the
+  device` again. Runtime testing showed that deleting `/persist/sensors/sns.reg`
+  made `sensors.qcom` regenerate it, but did not restore any framework-visible
+  sensors. The stock PD1619 sensors HIDL service logged
+  `HAL specifies version 1.4, but does not implement set_operation_mode()`;
+  switch the HIDL wrapper to the s2 source-built
+  `android.hardware.sensors@1.0-service.s2` while keeping the PD1619 stock
+  `sensors.qcom`, `sensors.msm8952_64.so`, `sensors.ssc.so`, and registry
+  configs.
+- Android 9 sensor follow-up, round 2:
+  the device-local wrapper was later renamed to
+  `android.hardware.sensors@1.0-service.PD1619`. After flashing a build with
+  the matching `file_contexts` entry, the service finally ran in
+  `u:r:hal_sensors_default:s0` instead of `u:r:init:s0`, so the remaining
+  sensor regression is no longer a service-label problem. Live logs still show
+  the stock prebuilt `android.hardware.sensors@1.0-impl.so` reporting
+  `HAL specifies version 1.4, but does not implement set_operation_mode()`,
+  plus repeated `libsensor1: qmi_client_get_service_list error -2` and
+  `qti_sensors_hal: addSensor : Not supported sensor with handle ...`. The next
+  experiment is to stop shipping the prebuilt HIDL impl and build
+  `android.hardware.sensors@1.0-impl` from source while keeping the stock
+  legacy sensor blobs (`sensors.msm8952_64.so`, `sensors.ssc.so`,
+  `libsensor1.so`, registry configs).
+- Android 9 sensor follow-up, round 3:
+  additional live adb checks on 2026-07-08 ruled out several easy answers.
+  The current booted image already has `/vendor/dsp -> /dsp` and
+  `/vendor/firmware_mnt -> /firmware`, plus source-built
+  `vendor/lib(64)/libsensorndkbridge.so`. Hot-adding the symlinks earlier did
+  not change the `qmi_client_get_service_list error -2` behavior, so the
+  missing symlink was a real tree bug but not the only cause of the Pie
+  regression. Checksums of the live sensor userspace chain
+  (`sensors.qcom`, `sensors.ssc.so`, `libsensor1.so`, `libqmi_cci.so`,
+  `libqmi_common_so.so`, `libqmi_csi.so`, `libqmi_encdec.so`, `libdiag.so`)
+  match the stock PD1619 dump exactly, which argues against a mixed vendor
+  sensor/QMI stack. However, the Pie build still uses non-stock framework-side
+  sensor bridge libraries (`libsensorservice.so`, `libsensorservicehidl.so`,
+  `libsensor.so`, `android.frameworks.sensorservice@1.0.so`,
+  `android.hardware.sensors@1.0.so`, `libsensorndkbridge.so` all differ from
+  stock checksums), so the remaining regression is now more likely to live in
+  the Pie bridge/runtime layer or in an earlier boot-time subsystem path than
+  in missing sensor blobs.
+- Android 9 sensor follow-up, round 4:
+  a live adb A/B test replaced the 64-bit framework-side sensor bridge stack
+  with stock Oreo copies:
+  `android.frameworks.sensorservice@1.0.so`,
+  `android.hardware.sensors@1.0.so`, `libsensor.so`,
+  `libsensorservice.so`, `libsensorservicehidl.so`, and
+  `vendor/lib64/libsensorndkbridge.so`. The replacement hashes matched the
+  stock dump exactly after `adb remount`, so this was not a packaging mistake.
+  The result was worse, not better: `system_server` failed to come up,
+  `bootanim` stayed running, and the phone never reached
+  `sys.boot_completed=1` until the original Pie-built libraries were restored
+  from `/data/local/tmp/pd1619-sensor-bridge-backup-20260708-172003`. After
+  restoring the original hashes and rebooting, the device returned to the prior
+  baseline (`system_server` alive, normal boot complete, sensors still missing).
+  Conclusion: the stock Oreo framework bridge libraries are not drop-in
+  compatible with the current Pie system image, so the fix is not a simple
+  system-lib swap.
 - IMS/call bring-up follow-up:
   mobile data and SMS worked, but outgoing calls disconnected immediately while
   the framework logged `ImsManager: getServiceProxy: b is null` and
@@ -836,3 +913,130 @@ HALs register normally through `lshal`.
   `android.hidl.manager@1.0-java`, while the Android O source jar is named
   `android.hidl.manager-V1.0-java.jar`; `qti_libpermissions.xml` deliberately
   exposes the former name while pointing at the latter file.
+- Android 9 sensor follow-up, round 5:
+  the live device is back on the stock PD1619 low-level sensor blobs
+  (`sensors.qcom`, `sensors.ssc.so`, `libsensor1.so`, `libsensor_reg.so`,
+  `sensor_calibrate.so`) plus the source-built Pie wrapper service
+  `android.hardware.sensors@1.0-service.PD1619` and source-built
+  `android.hardware.sensors@1.0-impl`. `dumpsys sensorservice` still reports
+  `No Sensors on the device` / `devInitCheck : 0`, but the current logs are
+  now well-characterized: `qti_sensors_hal` does enumerate PD1619-specific
+  details such as `AKM09911`, `AK09911-uncal_mag`, and multiple sensor handles,
+  then fails while requesting algorithm attributes through `libsensor1` with
+  repeated `qmi_client_get_service_list error -2`, `Unable to create client
+  connection`, `SensorsContext::getSensor handle ... is NULL!`, and
+  `Not supported sensor with handle ...` messages. That means the stock PD1619
+  blob stack is at least closer to the real hardware than a foreign one.
+- Android 9 sensor follow-up, round 6:
+  a surgical live swap of only `libsensor1.so` from `vendor/leeco/s2` changed
+  the failure mode, but did not recover sensors. Instead of only
+  `qmi_client_get_service_list error -2`, the log also produced
+  `Requested service is invalid or disallowed 67/69/70` and
+  `Service object not found`, which suggests the foreign `libsensor1` reaches a
+  slightly different service table but still mismatches the PD1619 stack.
+- Android 9 sensor follow-up, round 7:
+  a live swap of the whole `s2` low-level sensor set
+  (`sensors.qcom`, `sensors.ssc.so`, `libsensor1.so`, `libsensor_reg.so`,
+  `sensor_calibrate.so`) also failed to bring sensors up. The result remained
+  `No Sensors on the device`, and the logs lost some of the useful PD1619-
+  specific `AKM09911` detail that the stock vivo blobs expose. Conclusion:
+  stealing the entire LeEco `s2` sensor blob stack is not the right fix path
+  for PD1619; if any cross-device borrowing is attempted later, it should be
+  very targeted and only after identifying a donor stack that matches the same
+  sensor/QMI layout.
+- Android 9 sensor follow-up, round 8:
+  the device tree itself still had sensor-init drift versus other msm8976
+  bring-ups. `rootdir/etc/init.qcom.rc` only created `/persist/sensors` and
+  touched `sensors_settings`, while `s2` also fixes ownership for `sns.reg`,
+  registry directories, and related files. The packaged
+  `rootdir/etc/init.qcom.sh` also still used old `chmod -h` / `chown -h`
+  forms, which the current shell rejects. Live adb testing confirmed that
+  aligning `/persist/sensors`, `sns.reg`, and registry ownership to
+  `system:system` is hygienically correct but still not sufficient: the HAL
+  remains stuck at `qmi_client_get_service_list error -2` and
+  `devInitCheck : 0`. The tree should still carry the init/permission cleanup,
+  but the remaining breakage is deeper than a simple persist ownership issue.
+- Android 9 sensor follow-up, round 9:
+  the current Pie userspace was also missing a legacy identity that the stock
+  Qualcomm sensor daemon still expects. `strings /vendor/bin/sensors.qcom`
+  shows it tries `getpwnam/getgrnam("sensors")` and explicitly falls back to
+  `nobody` if that lookup fails. On the running Pie build, `id sensors` fails,
+  `generated_android_ids.h` contains `system`, `radio`, `gps`, `input`, and
+  `nobody` but not `sensors`, and the live daemon indeed runs as
+  `uid=9999(nobody) gid=9999(nobody)`. That in turn explains the ugly
+  capability/ownership smell around `/persist/sensors/*`: the blob is being
+  forced down its fallback path. `system/core` history confirms this is not a
+  made-up local hack: commit `f55d74fbe2b` (`system: core: Add Sensors group`)
+  originally defined `AID_SENSORS 3012` for exactly this legacy Qualcomm
+  sensor socket/service use case. The tree now restores `AID_SENSORS 3012` in
+  `system/core/libcutils/include/private/android_filesystem_config.h` so
+  `bionic` can regenerate a `generated_android_ids` entry for `sensors`.
+- Android 9 sensor follow-up, round 10:
+  the useful breakthrough was not in `dmesg` but in the userspace sensor
+  daemon itself. Kernel-side logging is effectively useless on this device for
+  the sensor path: `dmesg` stays empty, `/proc/kmsg` and `/dev/kmsg` do not
+  emit meaningful `sensor|adsp|dsps|slpi|sns|qmi|smgr` lines, and the closed
+  3.10 kernel exposes only a writable `/sys/kernel/boot_adsp/boot` node with
+  no readable `status`/`subsys_state` companion nodes. The productive debug
+  path is:
+  `setprop debug.vendor.sns.daemon 1`, then restart `sensors.qcom`, and if
+  needed temporarily widen `/persist/sensors/sensors_dbg_config.txt`.
+  With that enabled, `sensors.qcom` prints its real init sequence:
+  `sns_em_init`, `sns_reg_init`, `sns_time_init`, `sns_debug_test_init2`,
+  `sns_aon_algo_init`, then `All modules initializied`, followed by
+  `Register for SMRG service`, `Waiting for SMGR service up`,
+  `Get SMGR servive info`, `Initialize client for SMRG`,
+  `Register for SMGR error notification`, and finally
+  `sns_daemonctrl_sem! waiting %d`.
+  Framework-side symptoms match that story exactly:
+  `libsensor1: wait_for_service: Service 0 is not available (5000 ms)` and
+  `qti_sensors_hal: SMGRSensor_sensor1_cb: SENSOR1_MSG_TYPE_RETRY_OPEN`, while
+  `dumpsys sensorservice` still shows `No Sensors on the device` /
+  `devInitCheck : 0`.
+  Conclusion: the remaining Pie regression is no longer "HAL wrapper is wrong"
+  but "the ADSP/SMGR side never becomes ready for the daemon to bind to". This
+  makes the next debugging target the ADSP/DSPS bring-up path and service
+  readiness rather than more blind HIDL or framework churn.
+- Android 9 sensor follow-up, round 11:
+  a partial msm8953 Qualcomm BSP at
+  `/run/media/shion/GameTurbo/LinuxZone/vendor_qcom_proprietary-msm8953/`
+  was enough to recover the control flow behind the debug strings.
+  `sensordaemon/main/src/sns_main.c` confirms:
+  `Register for SMRG service` -> `Waiting for SMGR service up` ->
+  `Get SMGR servive info` -> `Initialize client for SMRG` ->
+  `Register for SMGR error notification` all belong to
+  `sns_monitor_smgr_restart()`. If that wait actually times out, the daemon
+  logs `Timeout waiting for SMGR service. Exit sensors daemon!` and calls
+  `sns_main_exit()`. The later `sns_daemonctrl_sem! waiting %d` log is *not*
+  the SMGR wait; it is only the daemon's final idle loop after startup has
+  already completed and root privileges have been dropped. In other words:
+  seeing `sns_daemonctrl_sem! waiting` means `sensors.qcom` did manage to see
+  an SMGR service and register an error callback at least once.
+  The same BSP also proves that the framework-side
+  `libsensor1: wait_for_service: Service 0 is not available (5000 ms)` message
+  refers specifically to `SNS_SMGR_SVC_ID_V01` (`sns_common_v01.h` defines
+  service ID 0 as SMGR), and that `SENSOR1_MSG_TYPE_RETRY_OPEN` is the normal
+  async notification posted after an earlier `sensor1_open()` had to return
+  `SENSOR1_EWOULDBLOCK` while waiting for SMGR.
+  This narrows the interpretation of the live logs:
+  the problem is probably not "ADSP is completely dead", but rather that SMGR
+  readiness is late/flaky from the framework client's point of view and/or
+  later algorithm services (SAM family) still fail to come up after the base
+  SMGR path becomes visible.
+- Android 9 sensor follow-up, final:
+  the real LOS 16 root cause was much simpler than the framework/HIDL symptoms
+  suggested: the legacy Qualcomm daemon `/vendor/bin/sensors.qcom` was never
+  starting. In `rootdir/etc/init.qcom.rc` the `service sensors` stanza existed,
+  but it was marked `disabled`, there was no matching `start sensors` trigger
+  anywhere in the device/vendor init scripts, and the companion `sensor-sh`
+  helper also had no active trigger. That left
+  `init.svc.vendor.sensors-hal-1-0=running` while `init.svc.sensors` stayed
+  empty, so the HIDL wrapper registered successfully but could only return an
+  empty sensor list.
+  Live validation was decisive: manually starting `sensors.qcom`, then
+  restarting `vendor.sensors-hal-1-0` and `system_server`, immediately
+  restored a full working `dumpsys sensorservice` listing with live sensor
+  events. The correct device-tree fix is simply to let `service sensors
+  /vendor/bin/sensors.qcom` start normally with its `class core` instead of
+  leaving it permanently disabled. All temporary framework/HIDL debug and
+  retry experiments from this investigation were removed after confirmation.
