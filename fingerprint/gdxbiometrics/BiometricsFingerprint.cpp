@@ -201,16 +201,20 @@ Return<RequestStatus> BiometricsFingerprint::cancel() {
 typedef int (*enumerate_2_0)(struct fingerprint_device *dev, fingerprint_finger_id_t *results,
         uint32_t *max_size);
 Return<RequestStatus> BiometricsFingerprint::enumerate()  {
+    if (mDevice->common.version >= kVersion21) {
+        return ErrorFilter(mDevice->enumerate(mDevice));
+    }
+
     fingerprint_finger_id_t results[MAX_FINGERPRINTS];
     uint32_t n = MAX_FINGERPRINTS;
     enumerate_2_0 enumerate = (enumerate_2_0) mDevice->enumerate;
     int ret = enumerate(mDevice, results, &n);
     if (ret == 0 && mClientCallback != nullptr) {
-        ALOGD("Got %d enumerated templates", n);
+        ALOGD("Got %u enumerated templates", n);
         for (uint32_t i = 0; i < n; i++) {
             const uint64_t devId = reinterpret_cast<uint64_t>(mDevice);
             const auto& fp = results[i];
-            ALOGD("onEnumerate(fid=%d, gid=%d)", fp.fid, fp.gid);
+            ALOGD("onEnumerate(fid=%u, gid=%u)", fp.fid, fp.gid);
             if (!mClientCallback->onEnumerate(devId, fp.fid, fp.gid, n - i - 1).isOk()) {
                 ALOGE("failed to invoke fingerprint onEnumerate callback");
             }
@@ -363,7 +367,16 @@ void BiometricsFingerprint::notify(const fingerprint_msg_t *msg) {
             }
             break;
         case FINGERPRINT_TEMPLATE_ENUMERATING:
-            // ignored, won't happen for 2.0 HALs
+            ALOGD("onEnumerate(fid=%u, gid=%u, rem=%u)",
+                    msg->data.enumerated.finger.fid,
+                    msg->data.enumerated.finger.gid,
+                    msg->data.enumerated.remaining_templates);
+            if (!thisPtr->mClientCallback->onEnumerate(devId,
+                    msg->data.enumerated.finger.fid,
+                    msg->data.enumerated.finger.gid,
+                    msg->data.enumerated.remaining_templates).isOk()) {
+                ALOGE("failed to invoke fingerprint onEnumerate callback");
+            }
             break;
     }
 }
