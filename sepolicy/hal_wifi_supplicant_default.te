@@ -1,0 +1,5 @@
+typeattribute hal_wifi_supplicant_default data_between_core_and_vendor_violators;
+
+allow hal_wifi_supplicant_default wifi_data_file:dir rw_dir_perms;
+allow hal_wifi_supplicant_default wpa_socket:dir { add_name remove_name setattr write create_dir_perms };
+allow hal_wifi_supplicant_default wpa_socket:sock_file { create setattr create_file_perms };

@@ -1,2 +1,11 @@
 allow init proc:lnk_file { setattr };
 allow init socket_device:sock_file { create setattr };
+allow init sysfs_devfreq:file w_file_perms;
+allow init sysfs_graphics:file w_file_perms;
+allow init sysfs_devices_system_cpu:file w_file_perms;
+allow init sysfs_lowmemorykiller:file w_file_perms;
+allow init sysfs_msm_power:file w_file_perms;
+allow init sysfs_poweron_alarm:file w_file_perms;
+allow init sysfs_thermal:file w_file_perms;
+allow init sysfs_boot_adsp:file setattr;
+allow init sysfs_ea:file setattr;
