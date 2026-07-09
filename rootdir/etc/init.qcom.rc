@@ -498,7 +498,6 @@ service sensors /vendor/bin/sensors.qcom
     class core
     user root
     group root system input
-    disabled
 
 service sensor-sh /vendor/bin/init.qcom.sensors.sh
     class core
