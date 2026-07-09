@@ -7,7 +7,11 @@
 
 # Fingerprint
 /system/vendor/bin/hw/android\.hardware\.biometrics\.fingerprint@2\.0-service-custom u:object_r:hal_fingerprint_default_exec:s0
+/(vendor|system/vendor)/bin/hw/android\.hardware\.biometrics\.fingerprint@2\.1-service\.PD1619 u:object_r:hal_fingerprint_default_exec:s0
 /system/vendor/bin/hw/vendor\.vivo\.hardware\.biometrics\.analysis@1\.0-service u:object_r:vivo_biometrics_analysis_exec:s0
+
+# Sensors
+/(vendor|system/vendor)/bin/hw/android\.hardware\.sensors@1\.0-service\.PD1619 u:object_r:hal_sensors_default_exec:s0
 
 # Vivo vendor HIDL services
 /system/vendor/bin/hw/vendor\.vivo\.hardware\.bbkts@1\.0-service u:object_r:vivo_bbkts_exec:s0

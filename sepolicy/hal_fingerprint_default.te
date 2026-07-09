@@ -18,4 +18,7 @@ allow hal_fingerprint_default init:unix_stream_socket connectto;
 set_prop(hal_fingerprint_default, sys_fp_prop)
 allow hal_fingerprint_default firmware_file:dir search;
 allow hal_fingerprint_default firmware_file:file { read open getattr };
+allow hal_fingerprint_default fingerprintd_data_file:dir { add_name remove_name search write };
+allow hal_fingerprint_default fingerprintd_data_file:file { getattr rename unlink };
+
 add_service(hal_fingerprint_default, fingerprintd_custom_service);
