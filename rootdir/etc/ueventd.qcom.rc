@@ -231,9 +231,11 @@
 /sys/devices/virtual/gesture/gesture*          pocket  0660    input   system
 
 # led
-/sys/devices/soc.0/78b5000.i2c/i2c-1/1-0045/leds/red           blink   0660    input   system
-/sys/devices/soc.0/78b5000.i2c/i2c-1/1-0045/leds/green         blink   0660    input   system
-/sys/devices/soc.0/78b5000.i2c/i2c-1/1-0045/leds/blue          blink   0660    input   system
+/sys/devices/soc.0/7af6000.i2c/i2c-6/6-0030/leds/red           brightness 0664 system  system
+/sys/devices/soc.0/7af6000.i2c/i2c-6/6-0030/leds/red           blink      0664 system  system
+/sys/devices/soc.0/7af6000.i2c/i2c-6/6-0030/leds/green         brightness 0664 system  system
+/sys/devices/soc.0/7af6000.i2c/i2c-6/6-0030/leds/green         blink      0664 system  system
+/sys/devices/soc.0/7af6000.i2c/i2c-6/6-0030/leds/button-backlight brightness 0664 system system
 
 # vm_bms
 /dev/vm_bms               0660   system     system
