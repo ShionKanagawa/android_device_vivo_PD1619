@@ -236,11 +236,15 @@ set_speaker_light_locked(struct light_device_t* dev,
     switch (led_color) {
         case SPEAKER_LED_RED:
             write_int(RED_LED_FILE, 255);
-            write_optional_int(RED_BLINK_FILE, blink ? 1 : 0);
+            if (blink) {
+                write_optional_int(RED_BLINK_FILE, 1);
+            }
             break;
         case SPEAKER_LED_GREEN:
             write_int(GREEN_LED_FILE, 255);
-            write_optional_int(GREEN_BLINK_FILE, blink ? 1 : 0);
+            if (blink) {
+                write_optional_int(GREEN_BLINK_FILE, 1);
+            }
             break;
         case SPEAKER_LED_OFF:
         default:
