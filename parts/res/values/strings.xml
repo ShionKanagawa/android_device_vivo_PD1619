@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="device_settings_app_name">vivo X9Plus settings</string>
+    <string name="vivo_features_title">Vivo Features</string>
+    <string name="vivo_features_summary">Hi-Fi audio and charging options</string>
+    <string name="hifi_dac_title">Hi-Fi DAC</string>
+    <string name="hifi_dac_summary">Use the dedicated ES9018 headphone DAC for wired audio</string>
+    <string name="fast_charge_title">Fast charging</string>
+    <string name="fast_charge_summary">Use the stock quick-charge profile when supported</string>
 </resources>

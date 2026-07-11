@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="DeviceSettings" parent="@android:style/Theme.DeviceDefault.Settings">
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay.SettingsBase</item>
+    </style>
+</resources>

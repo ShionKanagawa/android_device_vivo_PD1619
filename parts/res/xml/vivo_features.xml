@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <SwitchPreference
+        android:key="hifi_dac"
+        android:title="@string/hifi_dac_title"
+        android:summary="@string/hifi_dac_summary"
+        android:persistent="false" />
+
+    <SwitchPreference
+        android:key="fast_charge"
+        android:title="@string/fast_charge_title"
+        android:summary="@string/fast_charge_summary"
+        android:persistent="false" />
+
+</PreferenceScreen>

@@ -16,6 +16,25 @@
         android:allowBackup="false"
         android:label="@string/device_settings_app_name">
 
+        <activity
+            android:name=".VivoFeaturesActivity"
+            android:label="@string/vivo_features_title"
+            android:icon="@drawable/ic_settings_vivo_features"
+            android:theme="@style/DeviceSettings">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.system" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/vivo_features_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_settings_vivo_features" />
+        </activity>
+
         <receiver android:name=".BootCompletedReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
