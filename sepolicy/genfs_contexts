@@ -2,6 +2,9 @@ genfscon debugfs /rmt_storage/rmts u:object_r:qti_debugfs:s0
 genfscon sysfs /devices/soc.0/7af6000.i2c/i2c-6/6-0050 u:object_r:sysfs_batteryinfo:s0
 genfscon sysfs /devices/soc.0/7af6000.i2c/i2c-6/6-0050/power_supply u:object_r:sysfs_batteryinfo:s0
 genfscon sysfs /devices/soc.0/7af6000.i2c/i2c-6/6-0050/power_supply/mcu u:object_r:sysfs_batteryinfo:s0
+genfscon sysfs /devices/soc.0/7af8000.i2c/i2c-8/8-0055 u:object_r:sysfs_batteryinfo:s0
+genfscon sysfs /devices/soc.0/7af8000.i2c/i2c-8/8-0055/power_supply u:object_r:sysfs_batteryinfo:s0
+genfscon sysfs /devices/soc.0/7af8000.i2c/i2c-8/8-0055/power_supply/bq_bms u:object_r:sysfs_batteryinfo:s0
 genfscon sysfs /devices/soc.0/cms.110 u:object_r:sysfs_batteryinfo:s0
 genfscon sysfs /devices/soc.0/cms.110/power_supply u:object_r:sysfs_batteryinfo:s0
 genfscon sysfs /devices/soc.0/cms.110/power_supply/cms u:object_r:sysfs_batteryinfo:s0
