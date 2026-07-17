@@ -68,17 +68,15 @@
     <ctl name="MI2S_RX Format" value="S16_LE" />
     <ctl name="VOC_EXT_EC MUX" value="NONE" />
     <ctl name="Smart PA Mode" value="Off" />
-    <ctl name="Headphone Rx Mixer I2S_RX" value="0" />
     <ctl name="VIVO_HiFi_Playback" value="0" />
     <ctl name="VIVO_SmartPA_Playback" value="0" />
     <ctl name="VIVO_SmartPA_Capture" value="0" />
     <ctl name="SmartPA Switch" value="0" />
     <ctl name="HiFi Mode Switch" value="Off" />
     <!-- Vivo Audio -->
-    <ctl name="QUIN_MI2S Bit Format" value="S16_LE" />
+    <ctl name="MI2S_RX Format" value="S16_LE" />
     <ctl name="SmartPA Switch" value="0" />
     <ctl name="Smart PA Mode" value="Off" />
-    <ctl name="QUIN_MI2S mode" value="Master" />
     <ctl name="VIVO_SmartPA_L_Capture" value="0" />
     <ctl name="VIVO_SmartPA_R_Capture" value="0" />
     <ctl name="VIVO_SmartPA_L_Playback" value="0" />
@@ -1209,9 +1207,8 @@
     <path name="speaker">
         <ctl name="VIVO_SmartPA_L_Playback" value="1" />
         <ctl name="VIVO_SmartPA_R_Playback" value="1" />
-        <ctl name="QUIN_MI2S mode" value="Master" />
         <ctl name="MI2S_RX Channels" value="Two" />
-        <ctl name="QUIN_MI2S Bit Format" value="S16_LE" />
+        <ctl name="MI2S_RX Format" value="S16_LE" />
         <ctl name="SmartPA left Switch left" value="1" />
         <ctl name="SmartPA right Switch right" value="1" />
         <ctl name="Smart PA Mode left" value="Music" />
@@ -1225,9 +1222,8 @@
     <path name="Voice Speaker">
         <ctl name="VIVO_SmartPA_R_Capture" value="1" />
         <ctl name="VIVO_SmartPA_R_Playback" value="1" />
-        <ctl name="QUIN_MI2S mode" value="Master" />
         <ctl name="MI2S_RX Channels" value="Two" />
-        <ctl name="QUIN_MI2S Bit Format" value="S16_LE" />
+        <ctl name="MI2S_RX Format" value="S16_LE" />
         <ctl name="SmartPA right Switch right" value="1" />
         <ctl name="Smart PA Mode right" value="Voice" />
     </path>
@@ -1301,11 +1297,9 @@
     </path>
 
     <path name="headphone-hifi">
-        <ctl name="VIVO_HiFi_Playback" value="1" />
-        <ctl name="QUIN_MI2S mode" value="According Rate" />
         <ctl name="MI2S_RX Channels" value="Two" />
-        <ctl name="QUIN_MI2S Bit Format" value="S24_LE" />
-        <ctl name="Headphone Rx Mixer I2S_RX" value="1" />
+        <ctl name="MI2S_RX Format" value="S24_LE" />
+        <ctl name="VIVO_HiFi_Playback" value="1" />
     </path>
 
     <path name="rec-headset">
@@ -1350,8 +1344,7 @@
         <ctl name="HPHR" value="Switch" />
         <ctl name="VIVO_SmartPA_L_Playback" value="1" />
         <ctl name="VIVO_SmartPA_R_Playback" value="1" />
-        <ctl name="QUIN_MI2S mode" value="Master" />
-        <ctl name="QUIN_MI2S Bit Format" value="S16_LE" />
+        <ctl name="MI2S_RX Format" value="S16_LE" />
         <ctl name="SmartPA left Switch left" value="1" />
         <ctl name="SmartPA right Switch right" value="1" />
         <ctl name="Smart PA Mode left" value="Music" />
