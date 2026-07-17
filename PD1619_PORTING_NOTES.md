@@ -1040,3 +1040,666 @@ HALs register normally through `lshal`.
   /vendor/bin/sensors.qcom` start normally with its `class core` instead of
   leaving it permanently disabled. All temporary framework/HIDL debug and
   retry experiments from this investigation were removed after confirmation.
+
+## LineageOS 17.1 Early-Boot Breadcrumbs
+
+- The Android 10 bring-up can currently fail before boot animation and before
+  adbd becomes usable, while the stock kernel also provides no useful dmesg.
+  `init.target.rc` therefore keeps a temporary persistent early-boot trace on
+  the physical cache partition.
+- This deliberately differs from the old Oreo bring-up rule that let
+  `mount_all` mount cache. For LOS 17.1 only, the cache fstab entry is marked
+  `recoveryonly`; normal boot starts `ueventd` and mounts cache directly from
+  the device `early-init` action. This avoids waiting for the full fstab pass,
+  which may block on userdata before any breadcrumb can be persisted.
+- Stage files cover `early-init`, `init`, `late-init`, `fs`, `post-fs`,
+  `post-fs-data`, APEX, logd, service managers, vold, zygote, SurfaceFlinger,
+  boot animation, and the ordinary boot actions. The newest reached stage is
+  stored in `/cache/pd1619-last-stage`.
+- The trace also saves the kernel command line, kernel version, mount tables
+  from before and after `mount_all`, and any available `last_kmsg`/pstore
+  console. Once logd starts, a small rotating userspace log is written to
+  `/cache/pd1619-logcat.txt` (up to two 2 MiB rotations).
+- After a failed boot, enter recovery and inspect or pull
+  `/cache/pd1619-*`. If no file exists at all, second-stage init either did not
+  import `init.target.rc`, failed before its device `early-init` action, or
+  could not expose/mount the cache block device.
+- The first LOS 17.1 test exposed an early uevent race: waiting only for the
+  bootdevice directory did not guarantee that its `by-name/cache` link already
+  existed. The early action now waits for that exact link and mounts it through
+  the platform path. The `on fs` fallback also stops and restarts the logcat
+  collector after mounting cache, so a logger first opened against the ramdisk
+  mountpoint cannot remain hidden behind the real cache filesystem.
+
+## LineageOS 17.1 Init/Kernel Blocker
+
+- The stock kernel does expose `/proc/last_kmsg` after an init panic. Recovery
+  can therefore preserve the only useful evidence even though normal dmesg is
+  disabled. Every failing Android 10 boot currently reaches the successful
+  system mount and `Switching root to '/system'`, then panics at about 2.5
+  seconds with `Attempted to kill init! exitcode=0x00000000`, before any
+  second-stage init output or device rc action.
+- The boot image, system image, root symlink, SELinux split/monolithic policy,
+  `/vendor` symlink, and moved `/dev` mount were each checked independently.
+  None explains the failure. The live `/system/bin/init` is the expected
+  Android 10 binary using `/system/bin/bootstrap/linker64`.
+- A minimal static ARM64 PID 1 that calls `exit(42)` works and produces kernel
+  panic code `0x00002a00`. First-stage mount, switch-root, path lookup, exec,
+  and static ARM64 execution are therefore all working.
+- Minimal 32-bit and 64-bit dynamic binaries both run correctly as ordinary
+  chroot processes when `/dev` is available, and both return 42 when launched
+  through an explicit Android linker command. The Android 10 linker and both
+  execution ABIs are usable after early init.
+- The same dynamic binaries do not reach their entry points when used as PID
+  1. Explicit linker trampolines fail in the same place. Static 64-bit and
+  32-bit PID 1 supervisors were also tested; their dynamic init child exits
+  immediately with status 0 before second-stage logging, even when linker64 is
+  invoked explicitly. Replacing Android init with the minimal dynamic
+  `exit(42)` payload does not change the result: that child also exits as 0
+  before its entry point. The behavior is therefore tied to the vendor
+  kernel's early-init process model, not Android init's PID checks and not
+  merely a 64-bit ELF or `PT_INTERP` issue.
+- This is related to the device's known Magisk quirk, where a 64-bit early
+  `magiskinit` fails while a 32-bit implementation works, but it is not an
+  exact duplicate: a 32-bit static supervisor still cannot hand Android 10
+  init off to its dynamic child.
+- Building the full Android 10 second-stage init statically from the device
+  tree is not a small workaround. Core dependencies including `libbinder` and
+  `libprocessgroup_setup` only provide shared variants in this branch. A real
+  continuation therefore requires either reverse-engineering/patching the
+  closed kernel's early-exec restrictions or a deliberate platform-level init
+  architecture change. Further fstab, rc, linker-config, or sepolicy changes
+  should not be treated as fixes for this specific 2.5-second panic.
+- The next diagnostic build instruments
+  `bionic/linker/linker_main.cpp::__linker_init_post_relocation()` immediately
+  before the direct-linker/helper-mode check. For PID 1 it writes a
+  `PD1619_LINKER` record containing `AT_BASE`, `AT_ENTRY`, `_start`, `AT_PHDR`,
+  `AT_PHNUM`, `argc`, and the helper-mode result directly to `/dev/kmsg`.
+  First-stage init has already created `/dev/kmsg` before it execs the dynamic
+  `/system/bin/init`, whose interpreter is
+  `/system/bin/bootstrap/linker64`; the record should therefore survive in
+  `/proc/last_kmsg` after the init panic. If `helper=1` and `AT_ENTRY` equals
+  `_start`, Android 10's linker is mistaking second-stage init for a direct
+  linker invocation and taking its normal `exit(0)` help path.
+- `tools/install-debug-linker64.sh` can install the diagnostic linker into an
+  already-flashed LOS 17.1 system from recovery. It mounts system read-write,
+  saves the original linker on the host, preserves the destination inode while
+  replacing its contents, and verifies the resulting SHA-256 hash.
+
+## Reconstructed-Kernel Audio Bring-Up
+
+- The first audio baseline with the reconstructed kernel was captured on the
+  Android 9 test system using the stock PD1619 DTB bundle. `audioserver` and
+  `android.hardware.audio@2.0-service` were running, but
+  `/proc/asound/cards` reported `--- no soundcards ---`. This is an ASoC card
+  registration failure, not initially an Android audio-policy problem.
+- The QDSP PCM platforms, `msm8x16_wcd_codec`, stub codec, and their DAIs were
+  all present under debugfs. The unbound platform device was
+  `c051000.sound`, whose live OF compatible is the standard
+  `qcom,msm8952-audio-codec`; it matches the compiled
+  `msm8952-asoc-wcd` machine driver.
+- A manual sysfs bind exposed the actual probe failure:
+  `is_us_eu_switch_gpio_support()` returned `-EINVAL`. The stock DTB provides
+  `qcom,cdc-us-euro-gpios`, but does not provide the CAF gpioset entry named
+  `us_eu_gpio` expected by the public driver. The driver now treats that
+  mismatch as an optional-feature failure: it disables automatic US/EU
+  headset wiring exchange instead of rejecting the entire sound card.
+- The stock DTB also exposes Vivo-specific follow-up work that is deliberately
+  separate from basic card registration: `vivo,hifi-codec-pd1619`, an
+  `ess,es9018-2m` DAC at I2C address `0x48`, and custom dynamic QUIN MI2S links
+  for Hi-Fi and the left/right speaker paths. Those features may still require
+  reconstruction after ordinary speaker, microphone, call, and headset audio
+  are tested with the base card registered.
+- The base CAF QUIN MI2S callbacks are not compatible with this DT/ADSP pair.
+  Explicitly enabling the LPASS clock there caused an ADSP SSR with
+  `adsp_mi2s_count: clk_enable_cnt exception`. Vivo instead uses dynamic ASoC
+  links and lets its codec path own the QUIN lifecycle. The PD1619 path now
+  replaces the base QUIN codec with `vivo-snd-soc-dummy`, uses no-op machine
+  callbacks, and appends the two DT-selected SmartPA links.
+- The closest GPL source for the external amplifier is Vivo Y51 commit
+  `3e31bae17d7365cf3f5576e17a912984287421a6` (`Initial for Y51`). PD1619 needs
+  a stereo/multi-instance reconstruction on top: I2C `1-0036` is left and
+  `1-0034` is right, both identify as TFA9897 revision `0x0b97`, and expose
+  DAIs `SmartPA left` and `SmartPA right`. Per-device copies of the DAI, DAPM
+  widgets, controls, and routes are required; sharing and mutating Y51's
+  single-instance static objects caused the v9 splash-screen hang.
+- Do not call `dev_set_name()` on the already-registered I2C clients to obtain
+  friendly codec names. It changes `dev_name()` without renaming the sysfs
+  kobject directory, so `request_firmware()` emits an impossible path such as
+  `.../tfa98xx-left/firmware/...` while the real directory remains `1-0036`.
+  Ueventd then cannot open the firmware `loading` node. Keep the native I2C
+  names and bind the links to ASoC codec names `tfa98xx.1-0036` and
+  `tfa98xx.1-0034`.
+- `tfa98xx_PD1619.cnt` must be installed under `vendor/firmware`, not only
+  `vendor/etc`, because the driver uses `request_firmware()`. The confirmed
+  stock container is 7255 bytes, describes two devices and six profiles, and
+  selects the expected `left` and `right` records for addresses `0x36` and
+  `0x34` respectively.
+- The v12 validation registers `msm8952-cdp-snd-card`, both TFA codecs, both
+  SmartPA DAIs, and controls `VIVO_SmartPA_L_Playback` and
+  `VIVO_SmartPA_R_Playback`. During framework playback both controls and DAPM
+  switches turn on, but the amplifier remains silent because both unmute paths
+  stop at `tfa98xx_dsp_power_on() not calibration`.
+- Stock performs SmartPA calibration immediately after card registration. Its
+  machine driver starts a standalone 48 kHz, 16-bit stereo QUIN AFE port,
+  enables the 1.536 MHz LPASS IBIT clock and `quin_i2s` gpioset, waits 50 ms,
+  invokes the codec calibration callback, then closes the port and clock. The
+  stock TFA implementation keeps all clients on a list and calibrates in
+  reverse probe order (right, then left), rather than using Y51's single
+  global client.
+- The reconstructed v13 path follows that sequence and obtains exactly the
+  stock impedances: right `7.98 ohm`, then left `32.82 ohm`. Subsequent
+  playback reaches `tfaRunSpeakerBoost(force=0)` for both amplifiers without
+  `not calibration`, ADSP SSR, or the former clock-count exception.
+- v13 still has no audible speaker output. During playback both TFA devices
+  remain at status `0x001c`: `AMPS=0` and `AREFS|CLKS=0`. Power-up clears
+  `PWDN` (`SYS_CTRL 0x0265 -> 0x0264`) but then times out waiting for a bit
+  clock. This is a playback-time QUIN clock ownership failure, not another
+  calibration or final-unmute failure.
+- The stock machine driver exposes an enum control named exactly
+  `Vivo MI2S Clock`. Its `put` callback calls the same standalone QUIN AFE,
+  LPASS IBIT, and gpioset sequence used for calibration. Stock QUIN startup,
+  prepare, and shutdown callbacks are no-ops; restoring the generic CAF
+  startup is therefore incorrect. The reconstructed control is state-guarded
+  and retained as a manual diagnostic/calibration interface. It is not part
+  of the normal speaker mixer path because its standalone AFE port may race
+  the DPCM backend.
+- Stock QUIN `hw_params` is not a no-op. For the speaker path's `Master` mode
+  it applies `SND_SOC_DAIFMT_CBS_CFS` to both the CPU and codec DAIs; this lets
+  the normal Q6 backend own playback clocking without the CAF startup's extra
+  clock operation. The reconstructed PD1619 ops now preserve the generic
+  format mask and restore this DAI-format setup.
+- v14 confirms that DAI format setup reaches both TFA devices but does not by
+  itself expose a clock at the amplifier pins. Calibration suspends the
+  `quin_i2s` gpioset when it finishes, while the former no-op playback startup
+  never reactivates it. The PD1619 startup now programs the QUIN mux and
+  activates only the `quin_i2s` gpioset; shutdown suspends it. It deliberately
+  does not call `msm_mi2s_sclk_ctl()`, so Q6 retains sole LPASS clock ownership
+  and the earlier ADSP clock-count SSR is not reintroduced.
+- V15 proves that pinctrl alone is insufficient. Running the TFA debug clock
+  command while the DPCM route is active changes the amplifier status from
+  `0x001c` to `0xd05e`, reports `AMPS=1`, and restores audible output. The
+  control's standalone `afe_port_start()` fails against the active DPCM port,
+  but LPASS clock setup has already succeeded and its error path leaves the
+  clock enabled. This explains why V14 appeared to recover after diagnostics.
+- Until a safe on-demand clock reference scheme is reconstructed, calibration
+  teardown closes only its standalone QUIN AFE port and deliberately leaves
+  the already-enabled 1.536 MHz LPASS IBIT clock running. Playback continues
+  to activate/suspend the `quin_i2s` pins. This costs some idle power but
+  avoids both silent playback and repeated clock-enable operations that caused
+  the earlier ADSP SSR.
+- `tools/package-reconstructed-kernel.sh <label>` packages the current
+  `out/pd1619-pstore/.../Image` with the stock DTB bundle and AIK's original
+  ramdisk. It always uses `--original --origsize`, restores the prior AIK split
+  kernel on exit, then unpacks the result and compares the kernel, ramdisk, and
+  final image size. Use this instead of manually invoking `repackimg.sh`; a
+  failed root-owned ramdisk repack previously produced a dangerous 20-byte
+  ramdisk while still printing `Done`.
+- Validate the clock control independently before rebuilding the ROM:
+  `tinymix | grep 'Vivo MI2S Clock'`, set it with
+  `tinymix 'Vivo MI2S Clock' 1`, then start speaker playback and confirm the
+  TFA status reports `CLKS`/`AREFS` instead of timing out. Keep this separate
+  from the normal mixer path unless testing proves that the DPCM backend and
+  standalone AFE port can share the QUIN lifecycle safely.
+- Avoid `dumpsys media.audio_flinger` on the Android 9 test build. Its closed
+  32-bit `android.hardware.audio@2.0-impl.so` has a null debug callback and
+  crashes audioserver in `Device::debug()`. Three observed audioserver crashes
+  matched the diagnostic dump calls exactly and were not playback failures.
+- Ghidra analysis of stock `PD1619-vmlinux.elf` resolves the actual Vivo QUIN
+  lifecycle. The PD1619 variants of `msm_quin_mi2s_snd_startup`,
+  `hw_params`, `prepare`, and `shutdown` only log and return; stock also makes
+  `msm_quin_mi2s_clock_enable` and the `Vivo MI2S Clock` put callback no-ops.
+  The active configuration is instead supplied by
+  `msm_quin_be_hw_params_fixup`, which applies the separate
+  `quin_mi2s_bit_format`, forces 48 kHz and the selected QUIN RX channel
+  count, and lets the Q6 MI2S DAI build and start the AFE port. Stock exposes
+  this state as `QUIN_MI2S Bit Format`. This documents the stock ownership
+  model, but cannot be copied alone: the reconstructed SmartPA path retains a
+  board-specific persistent QUIN clock that stock does not expose this way.
+- The retained v4/v5 test images and Codex session log identify the first
+  playback regression precisely. V4 selected 1.536 or 3.072 MHz from backend
+  `hw_params` through the AVS-version-aware clock API and played S24 normally.
+  V5 moved that update into the `MI2S_RX Format` mixer put callback; changing
+  the clock during Audio HAL route teardown/startup caused the stream to stop
+  advancing. A later experiment binding the stock QUIN fixup before the
+  reconstructed clock update also made ADSP reject backend `hw_params` with
+  `-EINVAL`. For the isolated A/B baseline, restore v4's generic fixup and
+  perform the reconstructed board's required clock update from backend
+  `hw_params` after applying `MI2S_RX Format`.
+  Preserve both AVS 2.6 `afe_set_lpass_clock` and AVS 2.7
+  `afe_set_lpass_clock_v2` paths. Do not update the clock from mixer put.
+  Restore the 1.536 MHz S16 baseline from backend shutdown before suspending
+  the QUIN pins; omitting that v4 step leaves the ADSP clock state stale after
+  an `ON -> OFF -> ON` transition, and the next S24 backend setup fails with
+  `afe_set_lpass_clock_v2() = -EINVAL`. MBHC protection handles the separate
+  analog-switch jack bounce.
+- A live v4 capture isolated that jack bounce from the physical connector.
+  While GPIO 914 continuously reported the headset as inserted, switching
+  Hi-Fi off and back on made the framework report headset states `1 -> 32`,
+  then about 3.16 seconds later `32 -> 0 -> 2`. AudioPolicy consequently
+  disconnected and reconnected the wired output several times. The existing
+  MBHC guard only covered the interval where the ES9018 was active, so it
+  expired before the delayed removal IRQ. Keep MBHC removal suppression active
+  for five seconds after either analog path transition, but only ignore the
+  electrical removal while the dedicated headset GPIO still reports inserted.
+  This preserves real unplug detection while covering the measured comparator
+  settling interval.
+
+## Reconstructed-Kernel Remaining Work
+
+- Confirmed working with the reconstructed kernel: display and backlight,
+  touchscreen, vibrator, battery reporting, ordinary charging, USB, RIL,
+  GNSS, sensors, WLAN, microphone input, Bluetooth audio, and the dual-TFA9897
+  loudspeakers.
+- The standalone CYTTSP controller at I2C `8-0028` now registers
+  `vivo_virtual_key`; MENU and BACK work. Light-touch HOME remains part of the
+  FPC1245 path rather than the CYTTSP controller.
+- Fingerprint still needs the FPC1245 kernel ABI reconstructed around the
+  active `spi3.0` device.
+- Camera is wholly unavailable with the reconstructed kernel. Recover the
+  PD1619 camera sensor, power, clock, ISP, and flash differences before
+  treating any userspace camera issue as independently actionable.
+- Hi-Fi remains separate from the working SmartPA speaker path. Restore the
+  ES9018 and `vivo,hifi-codec-pd1619` integration after the ordinary audio
+  routes are complete.
+  - The first reconstructed ES9018 driver successfully detects chip ID `0x32`,
+    enables the 1.8 V and 3.3 V rails, drives reset and MCLK high, selects the
+    external path, and writes the stock register table. It still produced no
+    audio because the reconstructed `msm8952.c` handled only the two SmartPA
+    entries from `qcom,msm-dynamic-dai-links`; the stock DT Hi-Fi RX/TX entries
+    were skipped as unsupported. Restore `VIVO_HiFi_Playback` and
+    `VIVO_HiFi_Capture` links plus the `vivo-codec`/`VIVO-HiFi` ASoC DAI so the
+    existing audio HAL can route playback to QUIN MI2S at S24_LE.
+- The STM32L011 low-level fast-charge path is reconstructed and proven on
+  hardware. The first persistent policy is implemented default-off and still
+  requires staged validation of its automatic entry, monitoring, and fallback
+  behavior before it can be exposed through DeviceParts.
+  - PD1619 does not use the BQ25890 slave-charger path inherited by some Vivo
+    trees. The stock DT and runtime identify an STM32L011 MCU at I2C `6-0050`
+    (`st,stm32l011-mcu`) alongside the QPNP SMB charger and BQ27546 fuel gauge.
+  - Its stock GPIOs are power GPIO115, interrupt GPIO107, USB-select GPIO66,
+    and level-shift enable GPIO105. With the current TLMM base these appear as
+    Linux GPIOs 994, 986, 945, and 984 respectively.
+  - The existing DeviceParts fast-charge switch only writes
+    `persist.sys.le_fast_chrg_enable`; stock `charger-monitor` consumed that
+    property. It does not control the reconstructed kernel by itself.
+  - The first reconstruction stage is intentionally diagnostic-only. It
+    binds the MCU, resets and powers it with USB kept on the AP path, and
+    exposes read-only firmware, IRQ, control, GPIO, and register state under
+    `/sys/bus/i2c/devices/6-0050/`. It does not write the MCU control register
+    or enable direct charging.
+  - Hardware validation with the Vivo DCP adapter confirms the private
+    protocol path works. A cold MCU reset reports IRQ A `0x80` (`INIT_DONE`),
+    switching DP/DM to the MCU advances it to `0xc0` (`HANDSHAKE_SUCCESS`) and
+    then `0xc2` (`POWER_MATCHED`). At a full battery it reports IRQ B `0x05`,
+    including the high-battery/exit condition, and safely abandons direct
+    charge. The adapter, cable, GPIO routing, MCU firmware, and handshake are
+    therefore operational; the remaining work is AP-side policy and safety
+    monitoring rather than hardware discovery.
+  - At 38% and about 4.03 V, the MCU progresses from `0xc2` to IRQ A `0xca`
+    (`VBAT_GOOD`) and then `0xda` (`PMI_SUSPEND`). The main charger current
+    drops from about 1.6 A to zero, proving that the MCU requests the normal
+    PMI path to yield, but direct-charge current does not take over without
+    the AP monitor. Stock disassembly shows that monitor writes `1` to MCU
+    watchdog register `0x07` every cycle while PMI is suspended. The bounded
+    follow-up probe restores only that confirmed watchdog kick; it still does
+    not write direct-charge control register `0x04`.
+  - The 2 A control probe confirms register `0x21 = 4` and REG04 bit 2 are
+    accepted, but that alone only stops normal charging: battery current falls
+    from about 1.58 A to zero and resumes after the bounded probe exits. The
+    MCU handshake, watchdog, and fallback remain healthy.
+  - Full stock disassembly identifies the missing handoff after
+    `PMI_SUSPEND`. The handler disables `battery`'s
+    `POWER_SUPPLY_PROP_CHARGING_ENABLED`, waits one second, verifies
+    `POWER_SUPPLY_PROP_CHARGE_TYPE == NONE`, and only then sets REG04 bit 0.
+    The earlier decompilation ended at an indirect power-supply call and hid
+    this continuation. The next bounded probe reconstructs that sequence and
+    restores PMI charging on every exit path; it is not yet a production
+    charging policy.
+  - Hardware validation of that handoff succeeds. REG04 advances from `0x04`
+    to `0x05`; while the QPNP battery supply reports
+    `charging_enabled=0` and `charge_type=N/A`, BQ27546 current rises from a
+    short transition discharge to 0.49 A, 1.03 A, 1.48 A, and finally about
+    1.58 A. The STM32 direct-charge path is therefore physically conducting,
+    not merely acknowledging commands. At timeout REG04 becomes `0x15`, USB
+    returns to the AP, QPNP charging is re-enabled, and ordinary charging
+    resumes around 1.5 A. Battery temperature changed only from 35.7 C to
+    35.8 C during the bounded test.
+  - This proves the reconstructed low-level sequence, but the current sysfs
+    trigger remains a laboratory probe. A production implementation still
+    needs continuous battery/connector thermal limits, voltage and SOC policy,
+    screen/call derating, MCU exception handling, unplug handling, and a
+    fail-closed watchdog before DeviceParts may enable it persistently.
+  - Stock IRQ dispatch uses handlers for IRQ A bit 1 (`POWER_MATCHED`), bit 3
+    (`VBAT_GOOD`), bit 4 (`PMI_SUSPEND`), bit 5 (`HANDSHAKE_FAIL`), bit 6
+    (`HANDSHAKE_SUCCESS`), bit 7 (`INIT_DONE`), and IRQ B bit 0
+    (`DCHG_EXIT`). IRQ B bit 2 is the polled high-voltage exit. The first
+    persistent policy treats either B exit bit, any C/D event, or handshake
+    failure as fail-closed.
+  - Stock powers and resets the MCU on USB insertion, enables the level
+    shifter after 10 ms, starts its first monitor after one second, and then
+    monitors every two seconds. On unplug it cancels monitoring and powers the
+    MCU down. The reconstructed persistent state machine follows that power
+    lifecycle instead of leaving the diagnostic MCU continuously powered.
+  - Stock CMS permits broader temperature/current ranges: its battery table
+    uses full scale from 25.0 through 44.9 C and 50 percent from 45.0 through
+    54.9 C; the display-on board-temperature table selects 4.5 A at or below
+    35 C, 3 A at 36-37 C, 2.5 A at 38-44 C, and 2 A at 45 C or above. Stock
+    STM32 monitoring exits after repeated battery-voltage disagreement around
+    4.42/4.45 V or excessive battery current.
+  - The initial persistent implementation is deliberately narrower. Entry
+    requires a DCP, healthy/present battery, 5-74 percent SOC, 15.0-40.0 C,
+    and at most 4.25 V. Runtime exits at 80 percent, outside 12.0-42.0 C, at
+    4.35 V, after three low-current monitor cycles, after 30 minutes, or on
+    any MCU/I2C/USB fault. Requested current is limited to 3 A below 35.0 C,
+    2.5 A through 38.0 C, and 2 A above that. Policy runs every two seconds,
+    watchdog every second, and imposes a 60-second retry cooldown.
+  - Persistent mode is default-off and exposed separately as
+    `fast_charge_enable` and `fast_charge_status`. The existing bounded
+    `handshake_probe` remains available. This first build must validate
+    automatic start, unplug, explicit disable, thermal/current adjustment,
+    timeout, and reboot behavior before the policy is connected to
+    DeviceParts or enabled by default.
+  - The first persistent-policy hardware test passed automatic entry,
+    explicit disable, unplug fallback, and automatic re-entry after reconnect.
+    The MCU progressed through IRQ A `0x80`, `0xc0`, `0xc2`, `0xca`, and
+    `0xda`; REG04 reached `0x05`, and a 2.5 A request produced a stable
+    measured battery current around 2.15-2.20 A. Explicit disable and unplug
+    both cleared the direct-charge state, powered down the MCU and level
+    shifter, returned USB to the AP, and restored PMI charging around 1.6 A.
+  - Runtime current adjustment is also confirmed: a 3 A request produced
+    about 2.71 A at 34.8 C, then automatically changed to 2.5 A as battery
+    temperature crossed 35 C, stabilizing near 2.27 A. Temperature remained
+    around 35.4-35.7 C during these short tests.
+  - The first policy used only battery temperature and briefly requested 3 A
+    even though the available `case_therm` zone reported about 38 C. The next
+    build includes that board-temperature source in entry, current selection,
+    and runtime exit decisions. It also reports the battery as charging while
+    the external direct-charge path is active; QPNP otherwise reports
+    `Discharging` because its own charger is deliberately suspended during
+    the handoff.
+  - The board-temperature/status build is validated. At `case_therm` 40 C it
+    selected 2 A immediately and delivered about 1.67 A; direct-charge state
+    reported `Charging` through the battery power supply. At 4.253 V the
+    policy refused to power the MCU or begin a handshake and reported
+    `reason=voltage`, confirming the high-voltage entry guard.
+  - The existing Vivo Features switch now controls the reconstructed
+    `/sys/bus/i2c/devices/6-0050/fast_charge_enable` node through the persistent
+    property/init bridge. A missing property defaults to disabled, and the
+    boot receiver reapplies the saved state after startup. This replaces the
+    obsolete LeEco `le_quick_charge_mode` node while retaining the existing
+    property name for upgrade compatibility. The node is already labeled
+    `sysfs_batteryinfo`; init receives write permission only for that device
+    type so the property bridge also works under enforcing SELinux.
+  - Stock-compatible policy v2 is based on the actual shipping DT rather than
+    inferred limits. PD1619 sets `primary-fastchg-ma = 4000`; although the
+    generic board-temperature table contains a 4500 mA tier and the MCU API
+    accepts up to 4500 mA, the device limit wins in normal production policy.
+  - The shipping screen-on primary table is: through 35 C, 4500 mA; 36-37 C,
+    3000 mA; 38-44 C, 2500 mA; and 45 C or above, 2000 mA. The screen-off table
+    is: through 36.0 C, 4500 mA; above 36.0 C, 3500 mA. Both are capped at the
+    PD1619 4000 mA primary limit. Stock passes integer degrees to the screen-on
+    table but 0.1 C units to the screen-off table; recovery dmesg and CMS call
+    sites confirm this otherwise surprising unit difference.
+  - The shipping `tc-data` direct-charge scale is 100 percent from 15.0 through
+    44.9 C, 75 percent from 10.0 through 14.9 C, 50 percent from 45.0 through
+    54.9 C, 30 percent from 0 through 9.9 C, and zero outside that range. The
+    reconstructed policy keeps an extra no-entry guard below 10 C rather than
+    attempting the stock sub-1.5-A corner case.
+  - Stock STM monitoring checks approximately 4421/4451 mV and 4701 mA and
+    requires four consecutive exceptional samples before exit. Policy v2 runs
+    at the same one-second cadence, counts four samples at 4421 mV and 4701 mA,
+    and retains 4451 mV as an immediate hard-voltage guard because only one of
+    the two stock voltage sources is presently exposed through the rebuilt
+    power-supply stack.
+  - Policy v2 also registers an framebuffer notifier and changes between the
+    shipping screen-on/off tables at runtime. Downward current changes are
+    immediate; upward changes require three consecutive policy samples. The
+    30-minute session timeout and fail-closed MCU/I2C/USB handling remain as
+    reconstruction-specific safety additions.
+  - Full connector NTC parity is not claimed yet. Stock DT defines USB
+    connector 70 C and battery-board 65 C maxima, and the MCU exposes separate
+    battery/PCB/USB/adapter ADC channels. Until the private NTC conversion table
+    and every channel mapping are restored, policy v2 keeps a 60 C board hard
+    exit and treats all MCU C/D exception events as immediate failures.
+  - Hardware testing found that the target current must not be used for the
+    initial MCU handshake. Starting directly at the screen-off 3500 mA tier
+    reached IRQ `0xc2 05` and the MCU exited before enabling direct charge. The
+    production sequence now always handshakes at 2500 mA and raises to the
+    temperature-selected target only after the direct path is active and PMI
+    charging is suspended.
+  - The corrected sequence is validated at 51 percent SOC, 31.1 C battery
+    temperature, and 35 C board temperature. It completed the 2500 mA
+    handshake, enabled direct charging, then raised to the capped 4000 mA tier
+    after three policy samples. Measured battery current briefly reached about
+    3.61 A before the MCU/adapter settled near 2.2-2.3 A. Screen state tracking
+    changed correctly in both directions, and explicit disable restored PMI
+    charging around 1.72 A with the MCU power, USB-select, and level-shifter
+    GPIOs all inactive.
+  - Stock disassembly completes the MCU NTC register map. PCB connector uses
+    `0x10/0x11`, battery connector `0x12/0x13`, adapter connector `0x18/0x19`,
+    adapter temperature `0x1a/0x1b`, USB connector `0x3f/0x40`, and battery
+    board temperature `0x41/0x42`. The USB and battery-board high bytes are
+    masked to seven bits. Table1 handles both board connectors, table2 handles
+    USB and battery-board temperature, and table4 handles the adapter pair.
+    All three tables are reproducibly extracted from the shipping GPL image;
+    known stock samples reproduce `1672 mV -> 42.0 C`, `1677 mV -> 41.0 C`,
+    `1584 mV -> 38.0 C`, and `1660 mV -> 35.0 C`.
+  - Runtime protection enforces the shipping 100 C PCB/battery-connector
+    maxima; both physical channels are present on PD1619 and become mandatory
+    after a three-second post-handoff settling period. Hardware testing shows
+    the MCU's USB and battery-board ADC registers remain zero, matching the
+    stock path where both private capability flags are clear and the driver
+    substitutes 25 C. Their 70 C and 65 C limits are therefore applied only
+    when those MCU channels report valid data; the reconstructed policy still
+    retains the fuel-gauge battery and `case_therm` guards instead of using the
+    stock constant. Adapter temperatures remain diagnostic because the
+    shipping CMS DT does not define separate adapter thresholds.
+  - The shipping `fbon-timer-limit = 2` is a CMS-cycle count, not two minutes.
+    Stock logs show roughly ten-second monitor cycles and apply
+    `fbon-batt-scale = 38` after the third completed cycle, about 30 seconds
+    after an unblank event. While direct charging, the parallel
+    `fbon-dchg-scale = 67` caps PD1619's 4000 mA request at 2680 mA, which the
+    MCU's 500 mA register granularity represents as 2500 mA. The reconstructed
+    policy applies that 2500 mA cap after 30 seconds of continuous screen-on
+    time and returns through the existing delayed upward-current path when the
+    display turns off.
+- Stock DT identifies the missing lights as a KTD2026 at I2C `6-0030`, with
+  child IDs 1/2/3 for `button-backlight`, `green`, and `red`. The reconstructed
+  driver consumes those existing nodes and preserves the binary blink API used
+  by the device light HAL. Button backlight, solid red/green output, boolean
+  hardware blinking, and restoration of the green charging indication are all
+  confirmed working on hardware.
+- Wired-headset insertion is not detected and the 3.5 mm output is unusable.
+  Microphone input and Bluetooth audio are working, which narrows this to the
+  headset-detection and analog routing path rather than the entire audio card.
+- Voice calls connect through the working RIL, but call audio is silent. The
+  earpiece/voice PCM route remains distinct from the now-working media speaker
+  path and needs its own validation.
+- Reboot targets are wrong: requests for recovery and bootloader do not reach
+  the requested mode. Reconstruct the Vivo reboot-reason/poweroff behavior.
+- Suspend/Doze has not been characterized. Revisit the previously observed
+  lock-related behavior and verify suspend entry, wake sources, and idle power
+  before considering power management complete.
+
+## Reconstructed-Kernel Headset Bring-Up
+
+- With a 3.5 mm headset physically inserted, the ASoC `Headset Jack` input
+  device reports switch bitmap `0x80`: `SW_JACK_PHYSICAL_INSERT` is set, but
+  `SW_HEADPHONE_INSERT` and `SW_MICROPHONE_INSERT` are not. Android therefore
+  receives no wired-device connection. The PMIC mechanical path works, while
+  MBHC never completes electrical classification.
+- The stock codec DT node provides an additional
+  `qcom,headset-irq-gpio = GPIO35` and the `headset_gpio_irq` pinctrl state.
+  The shipping symbol table contains `wcd_mbhc_gpio_plug_detect_irq`,
+  `wcd_mbhc_swch_gpio_irq_handler`, and
+  `wcd_mhbc_wait_gpio_irp_dwork`; none exists in public CAF.
+- GPIO35 maps to Linux GPIO 914 with this kernel. A live read while the
+  headset remained inserted returned a stable low level, confirming the
+  stock/Y51 active-low convention. The GPIO was unrequested before the MBHC
+  reconstruction.
+- Stock disassembly confirms a threaded GPIO IRQ that queues delayed work,
+  followed by repeated GPIO sampling before the normal WCD electrical
+  classification. The closest GPL implementation is Vivo Y51's
+  `BBK_HEADSET_GPIO` path, but the complete Y51 MBHC file cannot be copied over
+  the newer CAF register/callback implementation safely.
+- The scoped reconstruction keeps the existing CAF classification logic and
+  adds only the Vivo mechanical source: select the stock pinctrl state,
+  request the active-low GPIO with both-edge IRQ and wake support, debounce it
+  in delayed work, then feed its stable state into the existing WCD MBHC
+  insertion/removal handler. Devices without the DT property retain the CAF
+  PMIC IRQ path.
+- `msm_audrx_init()` also called `msm8x16_wcd_hs_detect()` twice after a
+  successful first start. The headset patch returns the first result instead,
+  matching the Vivo reference behavior and preventing duplicate external-IRQ
+  activation.
+- The first GPIO-IRQ build proves the mechanical reconstruction works: GPIO
+  914 is owned by `headset-detect`, both edges generate IRQ 712, and the
+  delayed worker reports stable insertion/removal. ASoC nevertheless reports
+  insertion as `0x108`, which is `SND_JACK_UNSUPPORTED` plus
+  `SND_JACK_MECHANICAL`, rather than a headphone/headset.
+- That result identifies the next missing stock path. The MBHC classifier sees
+  a GND/MIC cross-connection, but `swap_gnd_mic` was disabled because public
+  CAF requires an `us_eu_gpio` gpioset that the PD1619 stock DT does not list.
+  The DT does expose `qcom,cdc-us-euro-gpios = GPIO142`, and stock
+  `msm8952_swap_gnd_mic()` reads that GPIO, toggles it, and lets MBHC continue
+  polling. Static hot tests with GPIO142 forced low and high both remained
+  unsupported; they do not reproduce the required in-classification state
+  transition.
+- The follow-up reconstruction requests GPIO142 directly as an output and
+  installs `msm8952_swap_gnd_mic` without the CAF gpioset wrapper. This keeps
+  the stock state-machine behavior while matching the actual PD1619 DT.
+- The GPIO142 build proves the switch path itself works: GPIO1021 is owned by
+  `us-euro-switch`, and classification dynamically toggles it from low to high.
+  The resulting jack state is still `0x108`, so the remaining fault is in the
+  public CAF classifier rather than GPIO, pinctrl, or Android audio policy.
+- Stock `wcd_mbhc_detect_plug_type()` does not run the public CAF four-sample
+  cross-connection check or pre-set `current_plug` to `GND_MIC_SWAP`. It only
+  prepares micbias and schedules `correct_plug_swch`; that worker owns the
+  swap, resampling, and final classification. The next test removes the early
+  CAF preclassification so the state machine can evaluate the jack after the
+  US/EU GPIO transition.
+- Removing the early preclassification allows the jack to reach Android, but
+  the result is unstable between `LINEOUT` (`0x0c0` including the physical
+  bit) and `UNSUPPORTED` (`0x108`). ASoC register tracing proves the dedicated
+  jack GPIO remains inserted and GPIO142 flips, while the public CAF Schmitt
+  test continues to report a cross-connection afterward.
+- The reconstructed stock `wcd_correct_swch_plug()` confirms Vivo replaced
+  that final CAF decision with a private button/impedance classifier. Until
+  its complete impedance extensions are reconstructed, the scoped fallback
+  treats `HIGH_HPH` or `GND_MIC_SWAP` as a headset only when the dedicated
+  Vivo jack GPIO is active and the US/EU switch was actually toggled. This
+  does not alter the generic PMIC-only CAF path.
+- A correctly reported wired headset initially remained silent even though
+  AudioPolicy selected `AUDIO_DEVICE_OUT_WIRED_HEADSET`, PCM12 was running,
+  and the complete Cajon DAPM path through both HPH DACs and PAs was powered.
+  The missing board-level gate is `vivo,hifi-switch-sel-gpio = GPIO69` from
+  the stock `vivo,hifi-codec-pd1619` node. Vivo places an analog selector
+  between the internal Cajon codec, the external ES9018 path, and the physical
+  3.5 mm jack.
+- Stock `vivo_codec_parse_dt()` requests that GPIO and drives it high during
+  probe. A live test on Linux GPIO948 reproduced the behavior exactly: low
+  remained silent, while high immediately restored wired-headset audio with
+  playback uninterrupted. The reconstructed minimal platform driver now owns
+  the GPIO and selects the normal codec path at boot; it is also the correct
+  ownership point for the eventual full Hi-Fi implementation.
+- The first cold boot with that driver confirms GPIO948 is owned by
+  `hifi-switch-sel` and remains output-high without userspace intervention.
+  The inserted accessory reports `SW_HEADPHONE_INSERT` plus
+  `SW_JACK_PHYSICAL_INSERT` (`0x84`), Android connects
+  `AUDIO_DEVICE_OUT_WIRED_HEADPHONE`, and analog media playback is audible.
+  Basic wired-headphone detection and playback are therefore complete.
+
+## Reconstructed-Kernel Camera Bring-Up
+
+- The Vivo camera sensor-init ABI uses 13 submodule slots. Restoring that
+  layout allows all three sensors (`imx298_pd1617`, `imx376`, and `s5k3h7`)
+  to probe and exposes their V4L2 subdevices; EEPROM/OTP reads also complete.
+- The camera provider still aborted in
+  `QCameraParameters::initDefaultParameters()` because the sensor module
+  never completed its asynchronous initialization. Kernel logs identified
+  the immediate failure as `msm_actuator_set_param: Actuator function table
+  not found`, followed by actuator initialization returning `-EFAULT`.
+- Ghidra analysis of the stock PD1619 kernel shows five actuator table
+  entries, while public CAF only provides four. The extra entry has type
+  value 4 and uses the normal VCM operations except that lens parking is
+  disabled.
+- Vivo's published X21 kernel names this ABI extension
+  `ACTUATOR_MIDVCM`; its function table exactly matches the PD1619 stock
+  binary. The reconstructed kernel now exposes that enum value and registers
+  the matching MIDVCM table. This should allow the proprietary sensor module
+  to finish initialization and populate preview/picture capabilities.
+- Both PD1619 camera-flash nodes reference the same PMIC `switch_trigger`.
+  Public CAF attempts to register that trigger twice; the second registration
+  fails with `-EEXIST`, leaving the rear flash controller with a null switch
+  pointer. The HAL can then program `torch_0` but cannot enable the shared
+  flash block, so CameraService reports the torch as on while no rear light
+  appears. Stock Ghidra analysis shows a `global_switch_trigger` fallback:
+  the second controller reuses the trigger registered by the first. The
+  reconstructed flash driver now restores that behavior.
+
+## Reconstructed-Kernel Device Tree Baseline
+
+- The verified kernel configuration now has a device-specific
+  `arch/arm64/configs/lineage_pd1619_defconfig`. It was generated with
+  `savedefconfig` from `out/pd1619-fastcharge-v1/.config`; regenerating a
+  fresh `.config` and comparing it with the Python 2 `scripts/diffconfig`
+  produced no semantic differences before the DTB name was added.
+- `CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES="pd1619"` makes the native
+  `Image.gz-dtb` contain only the PD1619 tree even though the legacy Qualcomm
+  `dtbs` target still builds the complete `CONFIG_ARCH_MSM8916` board list.
+- The first source-controlled board tree is intentionally lossless:
+  `pd1619.dts` includes `pd1619.dtsi`, which is the selected PD1619 entry from
+  the stock multi-DTB bundle. The generated `pd1619.dtb` is 281325 bytes and
+  has SHA-256
+  `7ae6651d681e6e931a22b4c9dedd17c4990a1ea3a679cb7024e8acaf21901c3c`,
+  exactly matching `reverse/stock-8.12.1/stock-pd1619.dtb`.
+- Do not use the runtime `/proc/device-tree` dump as the packaged source. It
+  contains bootloader fixups such as `/chosen`, initrd addresses, serial
+  number, command line, aliases, and reordered nodes. The bootloader must
+  continue applying those fixups to the source-built stock input tree.
+- The legacy in-tree DTC needs `HOSTCFLAGS=-fcommon` with current host GCC.
+  A verified standalone build command is:
+
+  ```sh
+  make O=out/pd1619-fastcharge-v1 ARCH=arm64 \
+      lineage_pd1619_defconfig
+  make -j12 O=out/pd1619-fastcharge-v1 ARCH=arm64 \
+      HOSTCFLAGS=-fcommon \
+      CROSS_COMPILE="$PWD/../../../prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-" \
+      CROSS_COMPILE_ARM32="$PWD/../../../prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-" \
+      Image.gz-dtb
+  ```
+
+- `tools/package-reconstructed-kernel.sh` accepts `KERNEL_DTB_IMAGE` so the
+  native `Image.gz-dtb` can be packaged without appending the stock bundle.
+  The first verified package is
+  `/home/shion/AIK-Linux_MySelf/boot-PD1619-rr-CAF-pstore-v6-bq27546-pronto-module-dts-v1-single-pd1619-Magisk-v30.7.img`
+  with SHA-256
+  `85475e8d92886f9d8b45421f24b6981cf6ae28683e4ced8488e077f2d495034f`.
+- Hardware validation passed: the device boots Android normally with the
+  kernel-native `Image.gz-dtb` containing only the source-built
+  `pd1619.dtb`. The complete stock multi-DTB bundle is no longer required.
+  Split the flat tree incrementally into pinctrl, display, camera, audio,
+  input, power, and PMIC includes, testing each group rather than replacing
+  the whole tree with inherited CAF files at once.
+- The structured follow-up now inherits only `msm8976-v1.1.dtsi`; it does not
+  inherit `msm8976-mtp.dtsi`, because the latter adds reference-board NFC,
+  Synaptics touch, camera keys, WSA881x audio, reference camera, and panel
+  supply nodes that are not the PD1619 board design.
+- The flat 12917-line board dump has been reduced to an aggregator plus eight
+  focused board files: memory, pinctrl, display, camera, audio, input, power,
+  and remaining board overrides. The board-specific source totals about 2350
+  lines while the Qualcomm SoC description remains in the common DTSI.
+- Structural validation against the stock selected DTB reports exactly 1237
+  nodes and 9207 properties on both sides. All node paths, property presence,
+  scalar/byte values, phandle presence, and decoded phandle targets match;
+  semantic differences are zero. Binary hashes differ because the structured
+  source allocates phandle numbers and string-table entries in a different
+  order, which does not alter the resulting hardware description.
+- The structured test package is
+  `/home/shion/AIK-Linux_MySelf/boot-PD1619-rr-CAF-pstore-v6-bq27546-pronto-module-dts-v2-structured-pd1619-Magisk-v30.7.img`
+  with SHA-256
+  `1bfda1644b60ea444632ba21c6110d7f796a80c1fba26bd84f27b5b42b211e41`.
+  It requires one final hardware boot and peripheral smoke test before this
+  DTS restructuring is committed.
