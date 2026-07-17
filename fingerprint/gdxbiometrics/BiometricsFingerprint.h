@@ -70,8 +70,11 @@ private:
     static BiometricsFingerprint* sInstance;
 
     std::mutex mClientCallbackMutex;
+    std::mutex mRemoveMutex;
     sp<IBiometricsFingerprintClientCallback> mClientCallback;
     fingerprint_device_t *mDevice;
+    uint32_t mRemoveFid = 0;
+    bool mRemovePending = false;
 };
 
 }  // namespace implementation

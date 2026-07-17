@@ -188,13 +188,14 @@ Return<uint64_t> BiometricsFingerprint::getAuthenticatorId() {
 }
 
 Return<RequestStatus> BiometricsFingerprint::cancel() {
+    if (is_goodix) {
+        fingerprint_msg_t msg = {};
+        msg.type = FINGERPRINT_ERROR;
+        msg.data.error = FINGERPRINT_ERROR_CANCELED;
+        mDevice->notify(&msg);
+    }
 
-    fingerprint_msg_t msg;
-    msg.type = FINGERPRINT_ERROR;
-    msg.data.error = FINGERPRINT_ERROR_CANCELED;
-    mDevice->notify(&msg);
-
-      return ErrorFilter(mDevice->cancel(mDevice));
+    return ErrorFilter(mDevice->cancel(mDevice));
 }
 
 #define MAX_FINGERPRINTS 100
@@ -224,7 +225,18 @@ Return<RequestStatus> BiometricsFingerprint::enumerate()  {
 }
 
 Return<RequestStatus> BiometricsFingerprint::remove(uint32_t gid, uint32_t fid) {
-    return ErrorFilter(mDevice->remove(mDevice, gid, fid));
+    if (!is_goodix) {
+        std::lock_guard<std::mutex> lock(mRemoveMutex);
+        mRemoveFid = fid;
+        mRemovePending = true;
+    }
+
+    int ret = mDevice->remove(mDevice, gid, fid);
+    if (ret != 0 && !is_goodix) {
+        std::lock_guard<std::mutex> lock(mRemoveMutex);
+        mRemovePending = false;
+    }
+    return ErrorFilter(ret);
 }
 
 Return<RequestStatus> BiometricsFingerprint::setActiveGroup(uint32_t gid,
@@ -336,14 +348,42 @@ void BiometricsFingerprint::notify(const fingerprint_msg_t *msg) {
                 ALOGE("failed to invoke fingerprint onEnrollResult callback");
             }
             break;
-        case FINGERPRINT_TEMPLATE_REMOVED:
+        case FINGERPRINT_TEMPLATE_REMOVED: {
+            uint32_t fid = msg->data.removed.finger.fid;
+            uint32_t gid = msg->data.removed.finger.gid;
+            uint32_t remaining = msg->data.removed.remaining_templates;
+
+            if (!is_goodix) {
+                std::lock_guard<std::mutex> removeLock(thisPtr->mRemoveMutex);
+                if (!thisPtr->mRemovePending) {
+                    ALOGD("Ignoring stale FPC remove callback: fid=%u", fid);
+                    break;
+                }
+
+                // The FPC HAL uses the pre-2.1 callback convention: one
+                // callback per removed template followed by fid=0 as an end
+                // marker. Translate it to the HIDL 2.1 remaining count.
+                if (thisPtr->mRemoveFid != 0) {
+                    if (fid == 0) {
+                        ALOGD("Ignoring FPC remove completion marker");
+                        break;
+                    }
+                    remaining = 0;
+                    thisPtr->mRemovePending = false;
+                } else {
+                    remaining = fid == 0 ? 0 : 1;
+                    if (fid == 0) {
+                        thisPtr->mRemovePending = false;
+                    }
+                }
+            }
+
             if (!thisPtr->mClientCallback->onRemoved(devId,
-                    msg->data.removed.finger.fid,
-                    msg->data.removed.finger.gid,
-                    msg->data.removed.remaining_templates).isOk()) {
+                    fid, gid, remaining).isOk()) {
                 ALOGE("failed to invoke fingerprint onRemoved callback");
             }
             break;
+        }
         case FINGERPRINT_AUTHENTICATED:
             if (msg->data.authenticated.finger.fid != 0) {
                 const uint8_t* hat =
