@@ -6,5 +6,5 @@
     <string name="hifi_dac_title">Hi-Fi DAC</string>
     <string name="hifi_dac_summary">Use the dedicated ES9018 headphone DAC for wired audio</string>
     <string name="fast_charge_title">Fast charging</string>
-    <string name="fast_charge_summary">Use the stock quick-charge profile when supported</string>
+    <string name="fast_charge_summary">Use the dedicated direct-charge controller when conditions allow</string>
 </resources>

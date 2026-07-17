@@ -16,7 +16,7 @@ import java.io.File;
 final class FastChargeUtils {
     private static final String DEVICE_PD1619 = "PD1619";
     private static final String QUICK_CHARGE_NODE =
-            "/sys/class/power_supply/battery/le_quick_charge_mode";
+            "/sys/bus/i2c/devices/6-0050/fast_charge_enable";
     private static final String PROP_FAST_CHARGE = "persist.sys.le_fast_chrg_enable";
 
     private FastChargeUtils() {
@@ -37,10 +37,14 @@ final class FastChargeUtils {
     }
 
     static boolean isEnabled() {
-        return "1".equals(SystemProperties.get(PROP_FAST_CHARGE, "1"));
+        return "1".equals(SystemProperties.get(PROP_FAST_CHARGE, "0"));
     }
 
     static void setEnabled(boolean enabled) {
         SystemProperties.set(PROP_FAST_CHARGE, enabled ? "1" : "0");
+    }
+
+    static void applySavedState() {
+        setEnabled(isEnabled());
     }
 }

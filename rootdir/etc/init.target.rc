@@ -377,10 +377,10 @@ on property:sys.shutdown.requested=*
     stop per_proxy
 
 on property:persist.sys.le_fast_chrg_enable=1
-    write /sys/class/power_supply/battery/le_quick_charge_mode 0
+    write /sys/bus/i2c/devices/6-0050/fast_charge_enable 1
 
 on property:persist.sys.le_fast_chrg_enable=0
-    write /sys/class/power_supply/battery/le_quick_charge_mode 1
+    write /sys/bus/i2c/devices/6-0050/fast_charge_enable 0
 
 on property:sys.settings.powerlimit=1
     write /sys/class/power_supply/battery/charging_enabled 0
