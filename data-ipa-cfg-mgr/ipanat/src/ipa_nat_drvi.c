@@ -2202,7 +2202,7 @@ void ipa_nati_del_dead_ipv4_head_nodes(uint8_t tbl_indx)
 			 cnt++) {
 
 		if (Read8BitFieldValue(tbl_ptr[cnt].ts_proto,
-					PROTOCOL_FIELD) == IPAHAL_NAT_INVALID_PROTOCOL
+					PROTOCOL_FIELD) == IPA_NAT_INVALID_PROTO_FIELD_CMP
 				&&
 				Read16BitFieldValue(tbl_ptr[cnt].nxt_indx_pub_port,
 					NEXT_INDEX_FIELD) == IPA_NAT_INVALID_NAT_ENTRY) {
