@@ -19,23 +19,6 @@ PD1619_DEVICE_PATH := $(LOCAL_PATH)
 
 ifneq ($(filter PD1619, $(TARGET_DEVICE)),)
 
-PD1619_LD_CONFIG_SOURCE := $(PD1619_DEVICE_PATH)/configs/ld.config.legacy.txt
-PD1619_LD_CONFIG_TARGET := $(TARGET_OUT_ETC)/ld.config.txt
-
-# O's core_minimal product always pulls in system/core's ld.config.txt module.
-# Keep that module intact, then overwrite its installed file with the stock
-# PD1619 legacy search path so bare dlopen() can find /vendor/${LIB}/hw blobs.
-include $(CLEAR_VARS)
-LOCAL_MODULE := PD1619_ld_config_override
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := ETC
-LOCAL_PREBUILT_MODULE_FILE := $(PD1619_LD_CONFIG_SOURCE)
-LOCAL_MODULE_PATH := $(TARGET_OUT_ETC)
-LOCAL_MODULE_STEM := pd1619_ld_config_override
-LOCAL_ADDITIONAL_DEPENDENCIES := $(PD1619_LD_CONFIG_TARGET)
-LOCAL_POST_INSTALL_CMD := $(hide) cp $(PD1619_LD_CONFIG_SOURCE) $(PD1619_LD_CONFIG_TARGET)
-include $(BUILD_PREBUILT)
-
 PD1619_WIFI_HAL_RC_SOURCE := $(PD1619_DEVICE_PATH)/configs/android.hardware.wifi@1.0-service.rc
 PD1619_WIFI_HAL_RC_TARGET := $(TARGET_OUT_VENDOR_ETC)/init/android.hardware.wifi@1.0-service.rc
 

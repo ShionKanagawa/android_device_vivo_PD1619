@@ -300,7 +300,6 @@ PRODUCT_PACKAGES += \
 
 # Device-specific installed-file overrides
 PRODUCT_PACKAGES += \
-    PD1619_ld_config_override \
     PD1619_wifi_hal_rc_override
 
 # Ramdisk
