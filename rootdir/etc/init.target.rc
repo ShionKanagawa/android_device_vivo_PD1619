@@ -37,8 +37,8 @@ on early-init
 
 on fs
     write /dev/kmsg "PD1619 init: on fs"
-    wait /dev/block/platform/soc.0/${ro.boot.bootdevice}
-    symlink /dev/block/platform/soc.0/${ro.boot.bootdevice} /dev/block/bootdevice
+    wait /dev/block/platform/soc/${ro.boot.bootdevice}
+    symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
     mkdir /cache 0770 system cache
     write /dev/kmsg "PD1619 init: before mount_all"
     mount_all /fstab.qcom
