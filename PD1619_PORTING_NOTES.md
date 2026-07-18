@@ -1703,3 +1703,54 @@ HALs register normally through `lshal`.
   `1bfda1644b60ea444632ba21c6110d7f796a80c1fba26bd84f27b5b42b211e41`.
   It requires one final hardware boot and peripheral smoke test before this
   DTS restructuring is committed.
+
+## Android 10 Legacy Linker Configuration
+
+- The reconstructed kernel allows Android 10 `init`, APEX activation, and
+  early userspace logging to run normally. This confirms that the previous
+  PID 1 failure came from the stock kernel rather than fstab, SELinux, or the
+  Android linker itself.
+- The first useful Android 10 log is
+  `/home/shion/AIK-Linux_17.1/initial.log`. Its repeated failures include
+  `app_process`, `audioserver`, and `mediaserver` being unable to find
+  `libnativeloader.so` or `libandroidicu.so` even though the Runtime APEX is
+  mounted successfully.
+- The device tree still installed its Android O-era
+  `configs/ld.config.legacy.txt` through a post-install override. That file
+  replaced Android 10's generated non-Treble linker configuration and removed
+  the `runtime`, `conscrypt`, `media`, and `resolv` APEX namespaces.
+- Android 10 must use the platform-provided
+  `system/core/rootdir/etc/ld.config.legacy.txt`. Non-Treble describes the
+  partition/runtime model; it does not make an old linker configuration valid
+  across Android releases. Device-specific bare `dlopen()` compatibility must
+  be handled at the affected blob or library path instead of replacing the
+  global linker namespace configuration.
+- After the linker fix, zygote no longer crashes but is not started because
+  `ro.crypto.state` remains unset. Android 10 mounts the system partition as
+  the read-only root, so legacy init-time `mkdir` commands for `/persist`,
+  `/firmware`, and `/dsp` fail with `EROFS`. The fstab also tried to mount the
+  unused stock `/apps` partition into another missing directory. `mount_all`
+  then returns 255 and never publishes the crypto state used by the
+  `zygote-start` triggers.
+- Declare `/cache`, `/persist`, `/firmware`, and `/dsp` with
+  `BOARD_ROOT_EXTRA_FOLDERS` so they are part of the system-as-root image.
+  Drop the stock `/apps` and `/oem` mounts: they only contain Funtouch/Google
+  preload packages and have no Lineage consumer. Do not replace this with a
+  forced `ro.crypto.state`; the real fs_mgr result is also required for
+  persist, modem/ADSP firmware, sensors, and other legacy services.
+
+### 3.10.108 OSS Kernel Runtime Validation
+
+- The reconstructed 3.10.108 kernel exposes the primary block controller at
+  `/dev/block/platform/soc/7824900.sdhci`; the older PD1619 rc used
+  `/dev/block/platform/soc.0/7824900.sdhci`. This caused `mount_all` to skip
+  userdata and all legacy partitions before Android framework startup.
+- The Android 10 boot image was hot-tested with the `soc` path, the generated
+  linker configuration, and system-as-root root directories. `userdata`,
+  `persist`, `firmware`, and `dsp` mounted successfully; `zygote64`,
+  `zygote`, `system_server`, and boot animation completed normally, with
+  `sys.boot_completed=1`.
+- The successful test image was built from the existing boot image with
+  `magiskboot`, preserving its kernel, DTB, and header while injecting the
+  current `fstab.qcom`, `init.target.rc`, and USB rc. Remaining failures are
+  peripheral HAL/blob issues, not early kernel, linker, or mount failures.
