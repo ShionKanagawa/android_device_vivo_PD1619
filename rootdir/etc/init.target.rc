@@ -28,40 +28,10 @@
 
 import /init.PD1619.usb.rc
 
-on early-init
-    mkdir /firmware 0771 system system
-    mkdir /system 0777 root root
-    mkdir /oem 0771 system system
-    mkdir /dsp 0771 media media
-    symlink /data/tombstones /tombstones
-
 on fs
-    write /dev/kmsg "PD1619 init: on fs"
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
-    mkdir /cache 0770 system cache
-    write /dev/kmsg "PD1619 init: before mount_all"
     mount_all /fstab.qcom
-    write /dev/kmsg "PD1619 init: after mount_all"
-    rm /cache/pd1619-last-stage
-    rm /cache/pd1619-stage-on-fs
-    rm /cache/pd1619-stage-fs
-    rm /cache/pd1619-stage-usb
-    rm /cache/pd1619-stage-post-fs
-    rm /cache/pd1619-stage-post-fs-data
-    rm /cache/pd1619-stage-early-boot
-    rm /cache/pd1619-stage-boot
-    rm /cache/pd1619-stage-zygote
-    rm /cache/pd1619-stage-surfaceflinger
-    write /cache/pd1619-stage-on-fs on-fs-after-mount_all
-    write /cache/pd1619-stage-fs fs-mount_all-returned
-    write /cache/pd1619-last-stage fs-mount_all-returned
-
-    setprop persist.sys.usb.config mass_storage,adb
-    setprop sys.usb.config mass_storage,adb
-    start adbd
-    write /cache/pd1619-stage-usb fs-adb-requested
-    write /cache/pd1619-last-stage fs-adb-requested
 
     mkdir /persist/data 0700 system system
     
@@ -71,16 +41,7 @@ on fs
     restorecon_recursive /persist
     restorecon_recursive /dsp
 
-on post-fs
-    write /cache/pd1619-stage-post-fs post-fs-reached
-    write /cache/pd1619-last-stage post-fs-reached
-    setprop sys.usb.config mass_storage,adb
-    start adbd
-
 on post-fs-data
-    write /cache/pd1619-stage-post-fs-data post-fs-data-reached
-    write /cache/pd1619-last-stage post-fs-data-reached
-
     mkdir /data/tombstones 0771 system system
     mkdir /tombstones/modem 0771 system system
     mkdir /tombstones/lpass 0771 system system
@@ -203,10 +164,6 @@ service qcamerasvr /vendor/bin/mm-qcamera-daemon
     user camera
     group camera system inet input graphics
 
-on early-boot
-    write /cache/pd1619-stage-early-boot early-boot-reached
-    write /cache/pd1619-last-stage early-boot-reached
-
 on init
    write /sys/module/qpnp_rtc/parameters/poweron_alarm 1
 
@@ -242,12 +199,6 @@ service thermal-engine /system/vendor/bin/thermal-engine
    group root
 
 on boot
-    write /cache/pd1619-stage-boot boot-reached
-    write /cache/pd1619-last-stage boot-reached
-    setprop persist.sys.usb.config mass_storage,adb
-    setprop sys.usb.config mass_storage,adb
-    start adbd
-
     start rmt_storage
 
     # access permission for secure touch
@@ -281,8 +232,6 @@ on property:init.svc.surfaceflinger=stopped
     stop ppd
 
 on property:init.svc.surfaceflinger=running
-    write /cache/pd1619-stage-surfaceflinger surfaceflinger-running
-    write /cache/pd1619-last-stage surfaceflinger-running
     start ppd
 
 on property:init.svc.bootanim=running
@@ -297,8 +246,6 @@ on property:init.svc.zygote=stopped
     stop ppd
 
 on property:init.svc.zygote=running
-    write /cache/pd1619-stage-zygote zygote-running
-    write /cache/pd1619-last-stage zygote-running
     start ppd
 
 on property:init.svc.zygote=restarting
