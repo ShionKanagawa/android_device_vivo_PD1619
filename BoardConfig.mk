@@ -114,7 +114,6 @@ BOARD_CHARGER_ENABLE_SUSPEND := true
 TARGET_RECOVERY_BACKLIGHT_PATH := /sys/class/leds/wled
 BLINK_PATH := "/sys/class/leds/red/blink"
 WITH_LINEAGE_CHARGER := false
-BOARD_HAL_STATIC_LIBRARIES := libhealthd.PD1619
 
 # CNE
 BOARD_USES_QCNE := true
