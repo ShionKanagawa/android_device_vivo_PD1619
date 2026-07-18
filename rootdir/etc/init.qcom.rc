@@ -181,11 +181,9 @@ on boot
     chown root system /sys/kernel/dload/dload_mode
     chmod 0660 /sys/kernel/dload/dload_mode
 
-    # Stock PD1619 loads pronto from init; keep wlan.driver.status in sync so
-    # the legacy O Wi-Fi HAL does not retry init_module() after another service
-    # has already inserted wlan.
+    # The OSS Pronto driver is built into the kernel. Keep the legacy O Wi-Fi
+    # HAL's status property in sync without attempting init_module().
     setprop wifi.interface wlan0
-    insmod /system/lib/modules/wlan.ko
     chown wifi wifi /sys/module/wlan/parameters/fwpath
     setprop wlan.driver.status ok
 

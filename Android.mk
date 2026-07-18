@@ -22,9 +22,8 @@ ifneq ($(filter PD1619, $(TARGET_DEVICE)),)
 PD1619_WIFI_HAL_RC_SOURCE := $(PD1619_DEVICE_PATH)/configs/android.hardware.wifi@1.0-service.rc
 PD1619_WIFI_HAL_RC_TARGET := $(TARGET_OUT_VENDOR_ETC)/init/android.hardware.wifi@1.0-service.rc
 
-# The legacy Wi-Fi HAL loads the stock pronto module via init_module() and
-# touches wlan sysfs parameters. Run this device's service as root without
-# changing the common hardware/interfaces rc.
+# The legacy Wi-Fi HAL touches WLAN sysfs parameters. Run this device's
+# service as root without changing the common hardware/interfaces rc.
 include $(CLEAR_VARS)
 LOCAL_MODULE := PD1619_wifi_hal_rc_override
 LOCAL_MODULE_TAGS := optional
@@ -127,15 +126,7 @@ $(WLAN_MAC): $(LOCAL_INSTALLED_MODULE)
 	@rm -rf $@
 	$(hide) ln -sf /persist/$(notdir $@) $@
 
-WLAN_MODULE := $(TARGET_OUT)/lib/modules/pronto/pronto_wlan.ko
-WLAN_MODULE_COPY := $(TARGET_OUT)/lib/modules/wlan.ko
-$(WLAN_MODULE_COPY): $(WLAN_MODULE)
-	@echo "WLAN module copy: $@"
-	@mkdir -p $(dir $@)
-	@rm -rf $@
-	$(hide) cp -f $< $@
-
-ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_PERSIST_SYMLINKS) $(WLAN_MAC) $(WLAN_MODULE_COPY)
+ALL_DEFAULT_INSTALLED_MODULES += $(WCNSS_PERSIST_SYMLINKS) $(WLAN_MAC)
 
 
 CMNLIB_IMAGES := cmnlib.b00 cmnlib.b01 cmnlib.b02 cmnlib.b03 cmnlib.mdt
