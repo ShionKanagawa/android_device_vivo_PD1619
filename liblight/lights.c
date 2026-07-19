@@ -41,6 +41,9 @@ static struct light_state_t g_battery;
 static struct light_state_t g_attention;
 static int g_last_backlight = -1;
 
+#define ANDROID_MAX_BACKLIGHT 255
+#define LM3697_MAX_BACKLIGHT 2047
+
 char const*const RED_LED_FILE
         = "/sys/class/leds/red/brightness";
 
@@ -127,11 +130,19 @@ rgb_to_brightness(struct light_state_t const* state)
 }
 
 static int
+backlight_to_lm3697(int brightness)
+{
+    return (brightness * LM3697_MAX_BACKLIGHT +
+            ANDROID_MAX_BACKLIGHT / 2) / ANDROID_MAX_BACKLIGHT;
+}
+
+static int
 set_light_backlight(struct light_device_t* dev,
         struct light_state_t const* state)
 {
     int err = 0;
     int brightness = rgb_to_brightness(state);
+    int hardware_brightness = backlight_to_lm3697(brightness);
     if(!dev) {
         return -1;
     }
@@ -141,7 +152,7 @@ set_light_backlight(struct light_device_t* dev,
         return 0;
     }
 
-    err = write_int(LCD_LM3697_FILE, brightness);
+    err = write_int(LCD_LM3697_FILE, hardware_brightness);
     if (!err) {
         g_last_backlight = brightness;
     }
