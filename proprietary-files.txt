@@ -501,26 +501,6 @@ etc/firmware/venus.mbn
 etc/firmware/venus.mdt
 etc/firmware/wlan/prima/WCNSS_cfg.dat
 
-# Media configuration
-vendor/etc/media_codecs.xml
-vendor/etc/media_codecs_8952.xml
-vendor/etc/media_codecs_8956.xml
-vendor/etc/media_codecs_8956_v1.xml
-vendor/etc/media_codecs_google_audio.xml
-vendor/etc/media_codecs_google_telephony.xml
-vendor/etc/media_codecs_google_video.xml
-vendor/etc/media_codecs_google_video_le.xml
-vendor/etc/media_codecs_performance.xml
-vendor/etc/media_codecs_performance_8952.xml
-vendor/etc/media_codecs_performance_8956.xml
-vendor/etc/media_codecs_performance_8956_v1.xml
-vendor/etc/media_codecs_vivo_audio.xml
-vendor/etc/media_codecs_vivo_video.xml
-vendor/etc/media_profiles.xml
-vendor/etc/media_profiles_8952.xml
-vendor/etc/media_profiles_V1_0.xml
-vendor/etc/media_profiles_vendor.xml
-
 # Camera tuning configs
 etc/camera/camera_config.xml
 etc/camera/csidtg_camera.xml
