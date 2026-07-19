@@ -89,6 +89,30 @@ $(KEYMASTER_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 ALL_DEFAULT_INSTALLED_MODULES += $(KEYMASTER_SYMLINKS)
 
 
+VIVO_CAMERA_IMPL_NAMES := \
+	vendor.vivo.hardware.camera.vif@1.0-impl.so \
+	vendor.vivo.hardware.camera.vivodevice@1.0-impl.so
+VIVO_CAMERA_IMPL_SYMLINKS := \
+	$(addprefix $(TARGET_OUT_VENDOR)/lib/,$(VIVO_CAMERA_IMPL_NAMES)) \
+	$(addprefix $(TARGET_OUT_VENDOR)/lib64/,$(VIVO_CAMERA_IMPL_NAMES))
+
+define make-vivo-camera-impl-symlink
+$(1): $(2)
+	@echo "Vivo camera implementation link: $$@"
+	@mkdir -p $$(dir $$@)
+	@rm -f $$@
+	$$(hide) ln -sf hw/$$(notdir $$@) $$@
+endef
+
+$(foreach libdir,lib lib64, \
+	$(foreach impl,$(VIVO_CAMERA_IMPL_NAMES), \
+		$(eval $(call make-vivo-camera-impl-symlink, \
+			$(TARGET_OUT_VENDOR)/$(libdir)/$(impl), \
+			$(TARGET_OUT_VENDOR)/$(libdir)/hw/$(impl)))))
+
+ALL_DEFAULT_INSTALLED_MODULES += $(VIVO_CAMERA_IMPL_SYMLINKS)
+
+
 WIDEVINE_IMAGES := widevine.b00 widevine.b01 widevine.b02 widevine.b03 widevine.mdt
 WIDEVINE_SYMLINKS := $(addprefix $(TARGET_OUT_VENDOR)/firmware/,$(notdir $(WIDEVINE_IMAGES)))
 $(WIDEVINE_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
