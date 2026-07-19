@@ -234,7 +234,11 @@ BOARD_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy
 
 # Shims
 TARGET_LD_SHIM_LIBS := \
+   /system/vendor/bin/imsrcsd|libbase_shim.so \
+   /system/vendor/lib/hw/android.hardware.bluetooth@1.0-impl-qti.so|libbase_shim.so \
+   /system/vendor/lib64/hw/android.hardware.bluetooth@1.0-impl-qti.so|libbase_shim.so \
    /system/vendor/bin/mm-qcamera-daemon|libshims_camera.so \
+   /system/vendor/lib/hw/camera.msm8952.so|libshims_camera.so \
    /system/vendor/lib64/libril-qc-qmi-1.so|libshims_rild_socket.so
 
 # Wifi

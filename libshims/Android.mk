@@ -31,14 +31,29 @@ LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
 
+# libbase_shim
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := libbase/logging.cpp
+
+LOCAL_SHARED_LIBRARIES := libbase
+
+LOCAL_MODULE := libbase_shim
+LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
+
+include $(BUILD_SHARED_LIBRARY)
+
+
 # libshims_camera
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
     bionic/bionic_time_conversions.cpp \
-    bionic/pthread_cond.cpp
+    bionic/pthread_cond.cpp \
+    camera/display_event_receiver.cpp
 
-LOCAL_SHARED_LIBRARIES := libc
+LOCAL_SHARED_LIBRARIES := libc libgui
 
 LOCAL_MODULE := libshims_camera
 LOCAL_MODULE_TAGS := optional

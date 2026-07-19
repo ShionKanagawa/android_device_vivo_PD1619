@@ -269,6 +269,7 @@ PRODUCT_PACKAGES += \
 
 # Libshims
 PRODUCT_PACKAGES += \
+    libbase_shim \
     libshims_camera \
     libshims_rild_socket
 
