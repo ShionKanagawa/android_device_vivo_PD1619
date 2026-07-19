@@ -145,11 +145,8 @@ on post-fs-data
     chmod 0664 /sys/class/leds/lm3697-backlight/brightness
     chown system system /sys/class/leds/wled/brightness
     chmod 0664 /sys/class/leds/wled/brightness
-    # PD1619 panel brightness is controlled by the external LM3697 backlight
-    # driver. Keep WLED enabled as a supply/helper path, but do runtime dimming
-    # through lm3697-backlight from lights HAL.
-    write /sys/class/leds/lm3697-backlight/brightness 255
-    write /sys/class/leds/wled/brightness 4095
+
+
 
     # reduced power rate when normal charge
     chown system system /sys/class/power_supply/battery/le_quick_charge_mode
@@ -234,9 +231,7 @@ on property:init.svc.surfaceflinger=stopped
 on property:init.svc.surfaceflinger=running
     start ppd
 
-on property:init.svc.bootanim=running
-    write /sys/class/leds/wled/brightness 4095
-    write /sys/class/leds/lm3697-backlight/brightness 255
+
 
 # workaround for color service issue
 on property:init.svc.surfaceflinger=restarting
