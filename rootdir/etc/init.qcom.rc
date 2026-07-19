@@ -528,6 +528,9 @@ service wpa_supplicant /system/vendor/bin/hw/wpa_supplicant \
     disabled
     oneshot
 
+on property:init.svc.wpa_supplicant=running
+    write /sys/module/wlan/parameters/fwpath sta
+    
 service loc_launcher /vendor/bin/loc_launcher
     #loc_launcher will start as root and set its uid to gps
     class late_start
