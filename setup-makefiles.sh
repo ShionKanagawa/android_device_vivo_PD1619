@@ -46,5 +46,20 @@ write_headers
 # The blobs
 write_makefiles "$MY_DIR"/proprietary-files.txt
 
+cat <<'EOF' >> "$LINEAGE_ROOT/vendor/$VENDOR/$DEVICE/Android.mk"
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := VivoCamera
+LOCAL_MODULE_OWNER := vivo
+LOCAL_SRC_FILES := proprietary/priv-app/VivoCamera/VivoCamera.apk
+LOCAL_CERTIFICATE := PRESIGNED
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := APPS
+LOCAL_DEX_PREOPT := false
+LOCAL_MODULE_SUFFIX := .apk
+LOCAL_PRIVILEGED_MODULE := true
+include $(BUILD_PREBUILT)
+EOF
+
 # We are done!
 write_footers

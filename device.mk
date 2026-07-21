@@ -158,7 +158,7 @@ PRODUCT_COPY_FILES +=  \
 
 # Camera
 PRODUCT_PACKAGES += \
-    Snap
+    VivoCamera
 
 ifneq ($(USE_PROPRIETARY_CAMERA),true)
 PRODUCT_PACKAGES += \
@@ -308,6 +308,8 @@ PRODUCT_COPY_FILES += \
 
 # Privapp Whitelist
 PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/configs/default-permissions-vivocamera.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/default-permissions/default-permissions-vivocamera.xml \
+    $(LOCAL_PATH)/configs/privapp-permissions-vivocamera.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/privapp-permissions-vivocamera.xml \
     $(LOCAL_PATH)/configs/privapp-permissions-qti.xml:$(TARGET_COPY_OUT_SYSTEM)/etc/permissions/privapp-permissions-qti.xml
 
 # Qualcomm dependencies
