@@ -434,16 +434,6 @@ service irsc_util /vendor/bin/irsc_util "/vendor/etc/sec_config"
     user root
     oneshot
 
-service rmt_storage /vendor/bin/rmt_storage
-    class core
-    user root
-    shutdown critical 
-    ioprio rt 0
-
-service tftp_server /vendor/bin/tftp_server
-    class core
-    user root
-
 on property:wc_transport.start_hci=true
     start start_hci_filter
 
@@ -476,16 +466,6 @@ service config_bt_addr /vendor/bin/btnvtool -O
     group bluetooth radio
     oneshot
 
-# QMUX must be in multiple groups to support external process connections
-service qmuxd /vendor/bin/qmuxd
-    class main
-    user root
-    group radio audio bluetooth gps nfc diag
-
-service netmgrd /vendor/bin/netmgrd
-    class main
-    group root wifi wakelock radio inet oem_2901
-
 service qti /vendor/bin/qti
     class main
     user radio
@@ -501,10 +481,6 @@ service sensor-sh /vendor/bin/init.qcom.sensors.sh
     user root
     seclabel u:r:qti_init_shell:s0
     oneshot
-
-on property:ro.use_data_netmgrd=false
-    # netmgr not supported on specific target
-    stop netmgrd
 
 # Adjust socket buffer to enlarge TCP receive window for high bandwidth
 # but only if ro.data.large_tcp_window_size property is set.

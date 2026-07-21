@@ -225,6 +225,7 @@ TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USES_MKE2FS := true
 
 # RIL
+ENABLE_VENDOR_RIL_SERVICE := true
 TARGET_USES_OLD_MNC_FORMAT := true
 TARGET_PROVIDES_QTI_TELEPHONY_JAR := true
 
@@ -234,7 +235,6 @@ BOARD_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy
 
 # Shims
 TARGET_LD_SHIM_LIBS := \
-   /system/vendor/bin/imsrcsd|libbase_shim.so \
    /system/vendor/lib/hw/android.hardware.bluetooth@1.0-impl-qti.so|libbase_shim.so \
    /system/vendor/lib64/hw/android.hardware.bluetooth@1.0-impl-qti.so|libbase_shim.so \
    /system/vendor/bin/mm-qcamera-daemon|libshims_camera.so \
