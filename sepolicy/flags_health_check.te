@@ -1,0 +1,4 @@
+get_prop(flags_health_check, alarm_boot_prop)
+get_prop(flags_health_check, alarm_handled_prop)
+get_prop(flags_health_check, alarm_instance_prop)
+get_prop(flags_health_check, apexd_prop)

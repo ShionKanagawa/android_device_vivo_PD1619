@@ -1,7 +1,11 @@
 oem.device.imeicache               u:object_r:qcom_ims_prop:s0
+sys.fake_bs_flag0                  u:object_r:qcom_ims_prop:s0 exact string
 ro.wcnss.serialno                  u:object_r:pd1619_wcnss_prop:s0
 serialno                   u:object_r:serialno_prop:s0
 sys.fp.image.coverage      u:object_r:sys_fp_prop:s0
 sys.fp.image.quality       u:object_r:sys_fp_prop:s0
 sys.fp.verify.retry        u:object_r:sys_fp_prop:s0
 sys.fp.verify.score        u:object_r:sys_fp_prop:s0
+sys.camera.otp.status      u:object_r:camera_prop:s0 exact string
+sys.cali_veri_2m           u:object_r:camera_prop:s0 exact string
+sys.front_torch_exist      u:object_r:camera_prop:s0 exact string

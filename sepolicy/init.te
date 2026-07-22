@@ -9,3 +9,8 @@ allow init sysfs_poweron_alarm:file w_file_perms;
 allow init sysfs_thermal:file w_file_perms;
 allow init sysfs_boot_adsp:file setattr;
 allow init sysfs_ea:file setattr;
+allow init sysfs_batteryinfo:file w_file_perms;
+allow init sysfs_fm:file setattr;
+allow init sysfs_mmc_host:file w_file_perms;
+allow init sysfs_usb_uicc:file setattr;
+allow init sysfs_wlan_fwpath:file { open setattr write };

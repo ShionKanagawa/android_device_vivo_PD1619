@@ -1,1 +1,15 @@
 init_daemon_domain(btnvtool)
+
+allow btnvtool init:fd use;
+allow btnvtool self:process getsched;
+
+allow btnvtool vendor_file:file { execute read open getattr map };
+r_dir_file(btnvtool, vendor_file)
+r_dir_file(btnvtool, vendor_hal_file)
+
+allow btnvtool persist_bluetooth_file:dir search;
+allow btnvtool persist_bluetooth_file:file r_file_perms;
+
+get_prop(btnvtool, bluetooth_prop)
+get_prop(btnvtool, log_tag_prop)
+write_logd(btnvtool)
